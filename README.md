@@ -1,5 +1,5 @@
 
-# micromouse
+# test_micro
 
 ## Structure
 
@@ -9,5 +9,5 @@
 | cmake                         | Generated [CMake](https://cmake.org/) files. May be deleted if user.cmake has not been added                                        |
 | .vscode                       | See [VSCode](https://code.visualstudio.com/docs/getstarted/settings)                                                                |
 | .vscode/settings.json         | Workspace specific settings                                                                                                         |
-| .vscode/micromouse.mplab.json | The MPLAB project file, should not be deleted                                                                                       |
+| .vscode/test_micro.mplab.json | The MPLAB project file, should not be deleted                                                                                       |
 | out                           | Final build artifacts                                                                                                               |
