@@ -1,0 +1,40 @@
+# Build outputs
+_build/
+out/
+build/
+dist/
+
+# C/C++ compilation artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+*.cof
+*.d
+
+# CMake and toolchain cache/files
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# MPLAB X / XC toolchain outputs
+nbproject/private/
+nbproject/Makefile-*
+nbproject/*.mk
+*.mcp
+*.mcs
+
+# Editor/OS noise
+.DS_Store
+Thumbs.db
+.vscode/
