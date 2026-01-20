@@ -16,7 +16,7 @@ void setupPWM()
     //RPOR7bits.RP14R = 0b01010;   // 01010 = PWM2H1 code
     
     PWM1CON1bits.PEN1H = 1; // enable  PWM driver PWM1H1 (LED5)
-    PWM1CON1bits.PEN2H = 1; // enable PWM driver PMW2H1 (LED7)
+    PWM1CON1bits.PEN2H = 0; // enable PWM driver PMW2H1 (LED7)
     PWM1CON1bits.PEN3H = 1; // disable PWM driver
     PWM1CON1bits.PEN1L = 0; // disable PWM driver 
     PWM1CON1bits.PEN2L = 0; // disable PWM driver

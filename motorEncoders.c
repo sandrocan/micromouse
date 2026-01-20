@@ -15,6 +15,8 @@
 
 #include <math.h>
 
+long oldPosition;
+
 //****************************************************************INITIALISE QEI************************
 
 void initQEI1( unsigned int startPos) 
@@ -128,11 +130,6 @@ void __attribute__((__interrupt__, auto_psv)) _QEI2Interrupt(void)
     {
         rotationCount2=rotationCount2- (long) 0x10000;//we had a negative roll-over
     }
-
-
-
-
-
 }
 
 
@@ -156,20 +153,17 @@ long getPositionInCounts_1()
 
 int getVelocityInCountsPerSample_1()
 {
-    static long oldPosition;
     long currentPosition;
     int velocity;
 
-        //disable interrupts to make sure we have consistent data
-    _NSTDIS=1;
+    //disable interrupts to make sure we have consistent data
+    _NSTDIS = 1;
     GET_ENCODER_1 (currentPosition);
-    _NSTDIS=0;
-    velocity=(currentPosition-oldPosition);
+    _NSTDIS = 0;
+    velocity = currentPosition - oldPosition;
 
-    oldPosition=currentPosition;
+    oldPosition = currentPosition;
     return velocity;
-
-
 }
 
 

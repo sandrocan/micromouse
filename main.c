@@ -108,7 +108,7 @@ int main()
     while (OSCCONbits.LOCK != 1); //Wait for PPL to lock
  
     setupIO(); //configures inputs and outputs
-    initTimer1(2 * 4166); //creates a 10ms timer interrupt 4166
+    initTimer1(4166); //creates a 10ms timer interrupt 4166
     //initTimer1InMS(200);
     setupUART1();
     initQEI1(0);

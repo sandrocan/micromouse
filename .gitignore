@@ -38,3 +38,12 @@ nbproject/*.mk
 .DS_Store
 Thumbs.db
 .vscode/
+
+.generated_files/
+nbproject/
+Makefile*
+Package-*
+private/
+!cmake/**/user.cmake
+cmake/**/.generated/*
+cmake/**/CMake*
