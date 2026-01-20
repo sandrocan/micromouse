@@ -92,16 +92,20 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
     float val_sensor = (float) TEST_SENSOR;
     drive_motor(val_sensor);
     
-    //char uart [64];
+    
     //snprintf(uart, sizeof(uart), "%f", val_sensor/4095.0);
     //putsUART1(uart);
     
     
     //IO9 and IO10 connected to encoder
-    //long position;
+    //VSS = GND
+    char uart [64];
+    long position;
     //position = getPositionInCounts_1();
-    //sprintf(uart, "Pos: %ld\r\n",position);
-    //putsUART1(uart);
+    position = getVelocityInCountsPerSample_1();
+    LED7 = LEDOFF;
+    sprintf(uart, "Position: %ld\r\n",position);
+    putsUART1(uart);
     
     //if(TEST_SENSOR > 2000){
     //    LED6 = LEDON;

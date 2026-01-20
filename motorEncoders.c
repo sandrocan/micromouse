@@ -77,9 +77,9 @@ void drive_motor(float val){
         LED6=LEDOFF; //In2 = high
         char speed_arr [4];
         float speed = -(val-2048.0)/2048.0*6.0/7.4;
-        setDCPWM1(speed);
-        sprintf(speed_arr, "PWN: %f\r\n",speed);
-        putsUART1(speed_arr);
+        setDCPWM1(1 - speed);
+        //sprintf(speed_arr, "PWN: %f\r\n",speed);
+        //putsUART1(speed_arr);
         //setDCPWM2(val/4095.0);
         //int test = (int) -(val-2048.0)/10;
         //U1TXREG = test;
@@ -88,7 +88,7 @@ void drive_motor(float val){
         //turn CW:
         LED4=LEDOFF; //In1 = high
         LED6=LEDON; //In2 = low
-        setDCPWM1((val-2048.0)/2048.0 * 6.0/7.4);
+        setDCPWM1(1 - ((val-2048.0)/2048.0 * 6.0/7.4));
         //setDCPWM2(val/4095.0);
         //int test = (int) (val-2048.0)/10;
         //U1TXREG = test;
