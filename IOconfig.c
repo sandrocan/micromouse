@@ -1,48 +1,62 @@
-#include "xc.h"
-#include "IOconfig.h"
+ #include "xc.h"
+ #include "IOconfig.h"
 
+ void setupIO() {
 
+    //ANALOG PINS: A0, A1, A8, rest digital
+    AD1PCFGL=0xFEFC;
 
+    //LEDs
+    TRISCbits.TRISC6 = 0;
+    TRISAbits.TRISA10 = 0;
+    TRISAbits.TRISA7 = 0;    
 
-void setupIO()
-{
-
-    int i;
-    AD1PCFGL=0xFFCE; //all pins are now digital, by default they are analogue
-    //CHANGED so that AN0 and AN5 are analogue inputs
-    
-    // set LEDs as output
-    TRISBbits.TRISB15 = 0;
+    //Motor Left (PWM, ENC, INPUT)
+    TRISCbits.TRISC0 = 1;
+    TRISCbits.TRISC1 = 1;
     TRISBbits.TRISB14 = 0;
-    TRISBbits.TRISB13 = 0;
+    TRISCbits.TRISC4 = 0;
+    TRISCbits.TRISC5 = 0;
+
+    //Motor Right (PWM, ENC, INPUT)
+    TRISCbits.TRISC8 = 1;
+    TRISCbits.TRISC9 = 1;
     TRISBbits.TRISB12 = 0;
-    
-    TRISBbits.TRISB8=0;// UART1 TX
+    TRISBbits.TRISB5 = 0;
+    TRISBbits.TRISB6 = 0;    
 
-    //PIN MAPPING
-    
-    //before we map, we need to unlock
-    __builtin_write_OSCCONL(OSCCON & 0xbf); // clear bit 6 (unlock, they are usually write protected)
-    
-    // PERIPHERAL receives data from which INPUT  
-    RPINR18bits.U1RXR = 9; //mapped to RP9 is U1 RX, CHANGE THIS
+    //Sensoren
+    TRISAbits.TRISA0 = 1;
+    TRISAbits.TRISA1 = 1;
+    TRISCbits.TRISC2 = 1;
 
-    
-    //PERIPHERAL QEA Encoder 1, receives data from RP10
-    RPINR14bits.QEA1R = 10; 
-    //PERIPHERAL QEB Encoder 1, receives data from RP11
-    RPINR14bits.QEB1R = 11;
-    
-    
-    //OUTPUT PIN receives data from which PERIPHERAL, 
-    //see table 11-2 in datasheet to check peripheral codes 
-    RPOR4bits.RP8R = 0b00011; //output bin RP8 gets data from peripheral U1 TX 
+    //UART
+    TRISBbits.TRISB2 = 0;
+    TRISBbits.TRISB3 = 1;
 
-   
-    //after mapping we lock again
-     __builtin_write_OSCCONL(OSCCON | 0x40); // Lock PPS registers (lock again!)
-     
-    for (i = 0; i < 30000; i++); // short dirty delay for changes to take effect,
+    //SELFDESTRUCT
+    TRISBbits.TRISB8 = 1;
 
-    
-}
+    /// PIN MAPPING
+    // Unlock OSCCON
+    __builtin_write_OSCCONL(OSCCON & 0xbf);
+
+    RPINR18bits.U1RXR = 3; //RP3 is U1 RX
+    RPOR1bits.RP2R = 0b00011; //RP2 is U1 TX
+
+    //PERIPHERAL Motor Left Encoder A
+    RPINR14bits.QEA1R = 16; 
+    //PERIPHERAL Motor Left Encoder B
+    RPINR14bits.QEB1R = 17;
+
+    //PERIPHERAL Motor Right Encoder A
+    RPINR16bits.QEA2R = 24; 
+    //PERIPHERAL Motor Right Encoder B
+    RPINR16bits.QEB2R = 25;
+
+    //lock OSCCON
+     __builtin_write_OSCCONL(OSCCON | 0x40); 
+
+    //Short **DIRTY** Delay nach Lenz'scher Art
+    for (volatile int i=0; i<30000; i++);
+ }
