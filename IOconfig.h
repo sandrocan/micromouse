@@ -35,9 +35,10 @@
 #define ENC_A_LEFT PORTCbits.RC0
 #define ENC_B_LEFT PORTCbits.RC1
 
-#define SENSOR_RIGHT PORTAbits.RA0
-#define SENSOR_MIDDLE PORTAbits.RA1
-#define SENSOR_LEFT PORTCbits.RC2
+//defined in dma.h
+//#define SENSOR_RIGHT PORTAbits.RA0
+//#define SENSOR_MIDDLE PORTAbits.RA1
+//#define SENSOR_LEFT PORTCbits.RC2
 
 #define SELFDESTRUCT !PORTBbits.RB8
 

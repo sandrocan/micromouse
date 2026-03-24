@@ -45,6 +45,11 @@
 /// Headers
 #include "xc.h"
 #include "IOconfig.h"
+#include "adc.h"
+#include "dma.h"
+#include "pwm.h"
+#include "timers.h"
+#include "uart.h"
 
 
 int main() {
@@ -72,7 +77,9 @@ int main() {
   initTimer1ms(10);
   startTimer1();
   setupPWM();
-
+  setupADC1();
+  startADC1();
+  initDMA();
 
   while(1) {
 
