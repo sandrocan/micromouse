@@ -59,7 +59,7 @@ int main() {
   // /2 (PLLPRE)
   // *20 (PLLDIV)
   // /2 (PLLPOST)
-  PLLFBDbits.PLLDIV = 18;                      )
+  PLLFBDbits.PLLDIV = 18;
   CLKDIVbits.PLLPRE = 0;            
   CLKDIVbits.PLLPOST = 0;
 
