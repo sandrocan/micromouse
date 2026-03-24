@@ -1,4 +1,5 @@
 #include "timers.h"
+#include "IOconfig.h"
 
 void initTimer1ms(float timeinms)
 {

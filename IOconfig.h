@@ -5,8 +5,11 @@
  *  Wintersemester 2025
  */
 
+
 #ifndef IOCONFIG_H
 #define IOCONFIG_H
+
+#include <xc.h>
 
 // #define LED_GREEN LATCbits.LATC6
 #define LED_BLUE LATAbits.LATA10

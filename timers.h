@@ -5,12 +5,12 @@
  *  Wintersemester 2025
  */
 
- #ifndef TIMERS_H
- #define TIMERS_H
+#ifndef TIMERS_H
+#define TIMERS_H
 
- #include "xc.h"
+#include <xc.h>
 
- void initTimer1ms(float timeinms);
- void startTimer1(void);
+void initTimer1ms(float timeinms);
+void startTimer1(void);
 
- #endif /* TIMERS_H */
+#endif /* TIMERS_H */

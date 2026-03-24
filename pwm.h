@@ -8,7 +8,8 @@
 #ifndef PWM_H
 #define PWM_H
 
-#include "xc.h"
+#include <xc.h>
+
 #define PWM_MAX (40000L)
 
 void setupPWM();

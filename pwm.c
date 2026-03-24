@@ -24,11 +24,8 @@ void setupPWM() {
     PWM1CON1bits.PEN3L = 0; // disable PWM driver
 
     PWM2CON1bits.PEN1H = 1; // enable PWM driver PWM2H1 (LED_GREEN)
-    PWM2CON1bits.PEN2H = 0; // (EXTRA 7)
-    PWM2CON1bits.PEN3H = 0;
-    PWM2CON1bits.PEN1L = 0;
-    PWM2CON1bits.PEN2L = 0;
-    PWM2CON1bits.PEN3L = 0;
+    PWM2CON1bits.PEN1L = 1; // (EXTRA 7)
+
 
 
     P1TCONbits.PTEN = 1; // Switch on PWM generator
@@ -36,7 +33,6 @@ void setupPWM() {
     P1DC1 = 0.1f*PWM_MAX;
     P1DC2 = 0.1f*PWM_MAX;
     P2DC1 = 0.1f*PWM_MAX;
-    P2DC2 = 0.1f*PWM_MAX;
 }
 
 

@@ -1,3 +1,5 @@
+#include "uart.h"
+
 void setupUART() {
 
     ///Setup UART with baudrate=115200
