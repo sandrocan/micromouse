@@ -6,12 +6,12 @@ void setupUART() {
 
     U1MODEbits.UARTEN = 0; //switch the uart off during set-up
     U1BRG = 42; // BRG = Fcycle / (16*115200) -1 ~= 42
-    U1MODEbits.LPBACK=0; // in loopback mode for test! TODO: set to no loop-back (=0) after test 
+    U1MODEbits.LPBACK=0;
 
     U1MODEbits.WAKE=0; //do not wake up on serial port activity
 
     U1MODEbits.ABAUD=0; //no auto baud rate detection
-    U1MODEbits.PDSEL=0; //select 8 bits date, no parity
+    U1MODEbits.PDSEL=0; //select 8 bits data, no parity
     U1MODEbits.STSEL=0; //one stop bit
     U1MODEbits.BRGH = 0; // No High Speed Mode
 
@@ -29,8 +29,6 @@ void setupUART() {
     IEC0bits.U1TXIE=0; //disable the transmit interrupt
 
     U1MODEbits.UARTEN=1; //switch the uart on
-
-    U1STAbits.UTXEN=1; //enable transmission
 }
 
 

@@ -37,7 +37,6 @@ nbproject/*.mk
 # Editor/OS noise
 .DS_Store
 Thumbs.db
-.vscode/
 
 .generated_files/
 nbproject/
@@ -47,3 +46,5 @@ private/
 !cmake/**/user.cmake
 cmake/**/.generated/*
 cmake/**/CMake*
+
+/.codex

@@ -1,4 +1,4 @@
-/*  FILE: main.c
+/*  FILE: uart.c
  *  Authors: 
  *  
  *  Micromouse
