@@ -48,3 +48,5 @@ cmake/**/.generated/*
 cmake/**/CMake*
 
 /.codex
+.vscode/settings.json
+.vscode/c_cpp_properties.json
