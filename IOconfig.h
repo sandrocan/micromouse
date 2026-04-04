@@ -12,8 +12,8 @@
 #include <xc.h>
 
 // #define LED_GREEN LATCbits.LATC6
-#define LED_BLUE LATAbits.LATA10
-#define LED_RED LATAbits.LATA7
+#define LED_RED LATAbits.LATA10
+#define LED_BLUE LATAbits.LATA7
 
 #define LEDON 0
 #define LEDOFF 1

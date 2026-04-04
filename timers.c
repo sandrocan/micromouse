@@ -1,5 +1,22 @@
 #include "timers.h"
 #include "IOconfig.h"
+#include "uart.h"
+#include "pwm.h"
+#include <math.h>
+
+static void updateLEDGreenSine(void)
+{
+    static float phase = 0.0f;
+    const float step = 0.06283185f; // 2*pi/100 -> 1 s period at 10 ms interrupt
+    float duty_cycle = 0.5f + 0.5f * sinf(phase);
+
+    setDCLEDGreen(duty_cycle);
+    phase += step;
+
+    if (phase >= 6.28318531f) {
+        phase -= 6.28318531f;
+    }
+}
 
 void initTimer1ms(float timeinms)
 {
@@ -58,7 +75,6 @@ void initTimer1ms(float timeinms)
     T1CONbits.TON = 0;      // leave timer disabled initially 
 }
 
-
 void startTimer1(void) 
 {
     T1CONbits.TON = 1; //
@@ -69,11 +85,13 @@ void startTimer1(void)
 void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
 {
     IFS0bits.T1IF = 0;           // reset Timer 1 interrupt flag 
+    //updateLEDGreenSine();
 
-    static int count = 0;
+    static int cnt = 0;
+    cnt++;
 
-    if (count>1000) {
-        LED_BLUE = ~LED_BLUE;
-        count=0;
+    if (cnt>100) {
+        cnt=0;
+        LED_BLUE = !LED_BLUE;
     }
 }

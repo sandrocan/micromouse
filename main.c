@@ -41,7 +41,6 @@
 #pragma config ICS = PGD1               // Comm Channel Select (Communicate on PGC1/EMUC1 and PGD1/EMUD1)
 #pragma config JTAGEN = OFF             // JTAG Port Enable (JTAG is Disabled)
 
-
 /// Headers
 #include <xc.h>
 #include "IOconfig.h"
@@ -65,7 +64,7 @@ int main() {
 
   __builtin_write_OSCCONH( 0x03 );  //Switch clock / activate 80Mhz
 
-  __builtin_write_OSCCONL( OSCCON || 0x01 ); // Oscillator with PLL (NOSC=0b011)
+  __builtin_write_OSCCONL( OSCCON | 0x01 ); // Oscillator with PLL (NOSC=0b011)
 
   while (OSCCONbits.COSC != 0b011); //Wait for OSC with PLL activated
   while (OSCCONbits.LOCK != 1); //Wait for lock

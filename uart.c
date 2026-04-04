@@ -5,7 +5,7 @@ void setupUART() {
     ///Setup UART with baudrate=115200
 
     U1MODEbits.UARTEN = 0; //switch the uart off during set-up
-    U1BRG = 42; // BRG = Fcycle / (16*115200) -1 ~= 42
+    U1BRG = 21; // BRG = Fcycle / (16*115200) -1 ~= 21
     U1MODEbits.LPBACK=0;
 
     U1MODEbits.WAKE=0; //do not wake up on serial port activity
@@ -29,6 +29,8 @@ void setupUART() {
     IEC0bits.U1TXIE=0; //disable the transmit interrupt
 
     U1MODEbits.UARTEN=1; //switch the uart on
+
+    U1STAbits.UTXEN=1; //enable the transmission of data
 }
 
 
