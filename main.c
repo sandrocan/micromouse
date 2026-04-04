@@ -49,6 +49,8 @@
 #include "pwm.h"
 #include "timers.h"
 #include "uart.h"
+#include "motors.h"
+#include "tests.h"
 
 
 int main() {
@@ -74,15 +76,20 @@ int main() {
   setupIO();
   setupUART();
   initTimer1ms(10);
-  startTimer1();
+  initTimer2ms(10);
   setupPWM();
+  initMotors();
+  initEncoders();
   setupADC1();
   startADC1();
   initDMA();
+  stopMotors();
+  test_PI_controller(7.0f, 0.5f);
+  startTimer1();
+  startTimer2();
 
   while(1) {
-
-  };
+  }
 
   return 0;
 }

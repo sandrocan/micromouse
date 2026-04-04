@@ -1,5 +1,6 @@
 #include "adc.h"
 #include <xc.h>
+#include "dma.h"
 
 
 
@@ -77,4 +78,19 @@ void startADC1(void)
 {
         AD1CON1bits.ADON=1; //set on-bit
         AD1CON1bits.ASAM=1;
+}
+
+unsigned int readLeftSensorValue(void)
+{
+    return SENSOR_LEFT;
+}
+
+unsigned int readMidSensorValue(void)
+{
+    return SENSOR_MIDDLE;
+}
+
+unsigned int readRightSensorValue(void)
+{
+    return SENSOR_RIGHT;
 }

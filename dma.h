@@ -11,7 +11,7 @@ extern unsigned int adcData[32]__attribute__((space(dma)));
 
 #define SENSOR_RIGHT adcData[0] //AN0
 #define SENSOR_MIDDLE adcData[1]  //AN1
-#define SENSOR_LEFT adcData[1]  //AN8
+#define SENSOR_LEFT adcData[2]  //AN8
 
 
 void initDMA();

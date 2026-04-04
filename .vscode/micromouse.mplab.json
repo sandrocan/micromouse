@@ -31,7 +31,7 @@
             "device": "dsPIC33FJ128MC804",
             "imagePath": "./out/micromouse/default.elf",
             "toolProperties": "default-tool-base",
-            "tool": "Simulator",
+            "tool": "PICkit 4",
             "packs": [
                 {
                     "name": "dsPIC33F-GP-MC_DFP",

@@ -12,6 +12,7 @@
 
 void initTimer1ms(float timeinms);
 void startTimer1(void);
-static void updateLEDGreenSine(void);
+void initTimer2ms(float timeinms);
+void startTimer2(void);
 
 #endif /* TIMERS_H */
