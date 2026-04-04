@@ -6,6 +6,11 @@
             "type": "toolchain",
             "provider": "microchip.toolchains:xc16@2.10",
             "properties": {}
+        },
+        {
+            "name": "default-tool-base",
+            "type": "tool",
+            "properties": {}
         }
     ],
     "fileSets": [
@@ -14,7 +19,7 @@
             "files": [
                 {
                     "include": "**/*",
-                    "exclude": "**/(_build|out|cmake|.vscode)/**/*"
+                    "exclude": "**/(_build|out|cmake|.vscode|old)/**/*"
                 }
             ]
         }
@@ -22,9 +27,11 @@
     "configurations": [
         {
             "name": "default",
-            "id": "conf1",
+            "id": "",
             "device": "dsPIC33FJ128MC804",
             "imagePath": "./out/micromouse/default.elf",
+            "toolProperties": "default-tool-base",
+            "tool": "Simulator",
             "packs": [
                 {
                     "name": "dsPIC33F-GP-MC_DFP",
