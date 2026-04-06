@@ -30,23 +30,23 @@ void setupPWM() {
 
     P1TCONbits.PTEN = 1; // Switch on PWM generator
     P2TCONbits.PTEN = 1;
-    P1DC1 = 0.1f*PWM_MAX;
-    P1DC2 = 0.1f*PWM_MAX;
-    P2DC1 = 0.1f*PWM_MAX;
+    P1DC1 = 0;
+    P1DC2 = 0;
+    P2DC1 = 0;
 }
 
 
 void setDCMotorLeft (float dc)
 {
-    P1DC1 = (1-dc) * PWM_MAX;
+    P1DC1 = dc * PWM_MAX;
 }
 
 
 void setDCMotorRight(float dc){
-    P1DC2 = (1-dc) * PWM_MAX;
+    P1DC2 = dc * PWM_MAX;
 }
 
 
 void setDCLEDGreen(float dc){
-    P2DC1 = (1-dc) * PWM_MAX;
+    P2DC1 = dc * PWM_MAX;
 }

@@ -15,8 +15,8 @@
 #define LED_RED LATAbits.LATA10
 #define LED_BLUE LATAbits.LATA7
 
-#define LEDON 0
-#define LEDOFF 1
+#define LEDON 1
+#define LEDOFF 0
 
 #define PWM_LEFT LATBbits.LATB14
 #define PWM_RIGHT LATBbits.LATB12

@@ -1,5 +1,5 @@
- #include <xc.h>
- #include "IOconfig.h"
+#include <xc.h>
+#include "IOconfig.h"
 
  void setupIO() {
 

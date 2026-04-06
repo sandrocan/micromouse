@@ -11,6 +11,7 @@
 #include <xc.h>
 
 void setupUART(void);
-void writeUART(char* buffer);
+void writeUART(const char* buffer);
+int initBluetooth(void);
 
 #endif /* UART_H */

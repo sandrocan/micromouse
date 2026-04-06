@@ -1,5 +1,61 @@
 #include "uart.h"
 
+static void uartDelayCycles(unsigned long cycles)
+{
+    volatile unsigned long i;
+
+    for (i = 0; i < cycles; i++) {
+        Nop();
+    }
+}
+
+static void uartDelayMs(unsigned int ms)
+{
+    while (ms-- > 0U) {
+        uartDelayCycles(20000UL);
+    }
+}
+
+static void flushUartRx(void)
+{
+    while (U1STAbits.URXDA) {
+        (void)U1RXREG;
+    }
+
+    U1STAbits.OERR = 0;
+}
+
+static int waitForUartResponse(const char *expected, unsigned int timeout_ms)
+{
+    unsigned int match_index = 0;
+
+    while (timeout_ms-- > 0U) {
+        while (U1STAbits.URXDA) {
+            char rx = (char)U1RXREG;
+
+            if (rx == expected[match_index]) {
+                match_index++;
+                if (expected[match_index] == '\0') {
+                    return 1;
+                }
+            } else {
+                match_index = (rx == expected[0]) ? 1U : 0U;
+            }
+        }
+
+        uartDelayMs(1);
+    }
+
+    return 0;
+}
+
+static int sendBluetoothCommand(const char *command, const char *expected, unsigned int timeout_ms)
+{
+    flushUartRx();
+    writeUART(command);
+    return waitForUartResponse(expected, timeout_ms);
+}
+
 void setupUART() {
 
     ///Setup UART with baudrate=115200
@@ -34,8 +90,8 @@ void setupUART() {
 }
 
 
-void writeUART(char *buffer) {
-    char * temp_ptr = (char *) buffer;
+void writeUART(const char *buffer) {
+    const char * temp_ptr = buffer;
 
     /* transmit till NULL character is encountered */
 
@@ -57,6 +113,37 @@ void writeUART(char *buffer) {
     }
 } 
 
+int initBluetooth(void)
+{
+    unsigned int rx_interrupt_enabled = IEC0bits.U1RXIE;
+
+    IEC0bits.U1RXIE = 0;
+    uartDelayMs(500);
+
+    if (!sendBluetoothCommand("$$$", "CMD>", 500)) {
+        IEC0bits.U1RXIE = rx_interrupt_enabled;
+        return 0;
+    }
+
+    if (!sendBluetoothCommand("SS,C0\r", "AOK", 500)) {
+        IEC0bits.U1RXIE = rx_interrupt_enabled;
+        return 0;
+    }
+
+    if (!sendBluetoothCommand("SN,Micromouse\r", "AOK", 500)) {
+        IEC0bits.U1RXIE = rx_interrupt_enabled;
+        return 0;
+    }
+
+    if (!sendBluetoothCommand("R,1\r", "Reboot", 1000)) {
+        IEC0bits.U1RXIE = rx_interrupt_enabled;
+        return 0;
+    }
+
+    uartDelayMs(500);
+    IEC0bits.U1RXIE = rx_interrupt_enabled;
+    return 1;
+}
 
 
 
@@ -68,11 +155,11 @@ void __attribute__((interrupt, no_auto_psv)) _U1RXInterrupt(void)
 
 	IFS0bits.U1RXIF=0;
 
-	//we should now read out the data
-	rxData=U1RXREG;
+	// //we should now read out the data
+	// rxData=U1RXREG;
     
-    //and copy it back out to UART
-    U1TXREG=rxData;
+    // //and copy it back out to UART
+    // U1TXREG=rxData;
 
 	//we should also clear the overflow bit if it has been set (i.e. if we were to slow to read out the fifo)
 	U1STAbits.OERR=0; //we reset it all the time
@@ -83,4 +170,3 @@ void __attribute__((interrupt, no_auto_psv)) _U1TXInterrupt(void)
 {	
 	IFS0bits.U1TXIF=0;
 }
-

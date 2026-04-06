@@ -1,7 +1,8 @@
 #include "timers.h"
 #include "IOconfig.h"
 #include "adc.h"
-#include "tests.h"
+#include "controller.h"
+#include "motors.h"
 #include "uart.h"
 #include "pwm.h"
 #include <math.h>
@@ -149,29 +150,38 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
     //updateLEDGreenSine();
 
     static int cnt = 0;
-    char uart_buffer[128];
+    char uart_buffer[96];
+    static float left_speed_mps = 0.0f;
+    static float right_speed_mps = 0.0f;
     unsigned int left_sensor_value;
-    unsigned int mid_sensor_value;
     unsigned int right_sensor_value;
+
+    left_speed_mps = readLeftMotorSpeedMps();
+    right_speed_mps = readRightMotorSpeedMps();
+    left_sensor_value = readLeftSensorValue();
+    right_sensor_value = readRightSensorValue();
+    updateController(left_speed_mps, right_speed_mps, left_sensor_value, right_sensor_value);
+
     cnt++;
 
     if (cnt >= 10) {
         cnt = 0;
-        left_sensor_value = readLeftSensorValue();
-        mid_sensor_value = readMidSensorValue();
-        right_sensor_value = readRightSensorValue();
-        
-        //snprintf(uart_buffer, sizeof(uart_buffer),
-        //         "left=%u mid=%u right=%u\r\n",
-        //         left_sensor_value, mid_sensor_value, right_sensor_value);
-        //
-        //writeUART(uart_buffer);
-        LED_BLUE = !LED_BLUE;
+        snprintf(uart_buffer, sizeof(uart_buffer),
+                 "left=%d right=%d target=%d trim=%d active=%d ls=%u rs=%u lcmd=%d rcmd=%d\r\n",
+                 (int)(left_speed_mps * 1000.0f),
+                 (int)(right_speed_mps * 1000.0f),
+                 getControllerTargetMmps(),
+                 getControllerTrimMmps(),
+                 isWallFollowTrimActive(),
+                 left_sensor_value,
+                 right_sensor_value,
+                 getControllerLeftCommandPermille(),
+                 getControllerRightCommandPermille());
+        writeUART(uart_buffer);
     }
 }
 
 void __attribute__((__interrupt__, auto_psv)) _T2Interrupt(void)
 {
     IFS0bits.T2IF = 0;           // reset Timer 2 interrupt flag
-    update_test_PI_controller();
 }

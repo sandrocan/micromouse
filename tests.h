@@ -1,9 +1,34 @@
 #ifndef TESTS_H
 #define TESTS_H
 
-void test_PI_controller(float kp, float ki);
-void update_test_PI_controller(void);
-float get_test_left_speed_mps(void);
-float get_test_right_speed_mps(void);
+void initButtonLedIndicator(void);
+void updateButtonLedIndicator(void);
+int isButtonLedDriveEnabled(void);
+
+void initRightMotorPiTest(void);
+void updateRightMotorPiTest(float measured_right_speed_mps);
+int getRightMotorTargetMmps(void);
+int getRightMotorCommandPermille(void);
+
+void initLeftMotorPiTest(void);
+void updateLeftMotorPiTest(float measured_left_speed_mps);
+int getLeftMotorTargetMmps(void);
+int getLeftMotorCommandPermille(void);
+
+void initDualMotorPiDriveTest(void);
+void updateDualMotorPiDriveTest(float measured_left_speed_mps, float measured_right_speed_mps);
+int getDualMotorTargetMmps(void);
+int getDualLeftCommandPermille(void);
+int getDualRightCommandPermille(void);
+
+void initWallFollowDriveTest(void);
+void updateWallFollowDriveTest(float measured_left_speed_mps,
+                               float measured_right_speed_mps,
+                               unsigned int left_sensor_value,
+                               unsigned int right_sensor_value);
+int getWallFollowBaseTargetMmps(void);
+int getWallFollowTrimMmps(void);
+int getWallFollowLeftCommandPermille(void);
+int getWallFollowRightCommandPermille(void);
 
 #endif /* TESTS_H */

@@ -50,10 +50,13 @@
 #include "timers.h"
 #include "uart.h"
 #include "motors.h"
+#include "selfdestruct.h"
+#include "controller.h"
 #include "tests.h"
 
 
 int main() {
+  unsigned int turn_trigger_armed = 1U;
 
   ///Internal Fcycle = 80 MHz
   // 16MHz Oscillator
@@ -75,6 +78,7 @@ int main() {
   ///INIT
   setupIO();
   setupUART();
+  initBluetooth();
   initTimer1ms(10);
   initTimer2ms(10);
   setupPWM();
@@ -83,12 +87,38 @@ int main() {
   setupADC1();
   startADC1();
   initDMA();
-  stopMotors();
-  test_PI_controller(7.0f, 0.5f);
+  initSelfDestructInterrupt();
+  initButtonLedIndicator();
+  initController();
+  driveStraight(0);
   startTimer1();
   startTimer2();
 
   while(1) {
+    unsigned int mid_sensor_value;
+
+    updateButtonLedIndicator();
+    if (isButtonLedDriveEnabled()) {
+      mid_sensor_value = readMidSensorValue();
+
+      if (isControllerTurning()) {
+        turn_trigger_armed = 0U;
+      } else {
+        if (mid_sensor_value <= 1000U) {
+          turn_trigger_armed = 1U;
+          driveStraight(500);
+        } else if (turn_trigger_armed) {
+          driveStraight(0);
+          turnLeft90();
+          turn_trigger_armed = 0U;
+        } else {
+          driveStraight(500);
+        }
+      }
+    } else {
+      driveStraight(0);
+      turn_trigger_armed = 1U;
+    }
   }
 
   return 0;

@@ -1,16 +1,22 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-void initLeftMotorController(float kp, float ki);
-void initRightMotorController(float kp, float ki);
-void setLeftMotorSpeedTarget(float target_mps);
-void setRightMotorSpeedTarget(float target_mps);
-void updateMotorControllers(void);
-float getLeftMeasuredSpeedMps(void);
-float getRightMeasuredSpeedMps(void);
-float getLeftMotorSpeedTarget(void);
-float getRightMotorSpeedTarget(void);
-float getLeftControlEffort(void);
-float getRightControlEffort(void);
+void initController(void);
+void driveStraight(int speed_mmps);
+void turnLeft90(void);
+void turnRight90(void);
+void setStraightSpeedMmps(int speed_mmps);
+void setWallFollowEnabled(int enabled);
+void updateController(float measured_left_speed_mps,
+                      float measured_right_speed_mps,
+                      unsigned int left_sensor_value,
+                      unsigned int right_sensor_value);
+
+int getControllerTargetMmps(void);
+int getControllerTrimMmps(void);
+int getControllerLeftCommandPermille(void);
+int getControllerRightCommandPermille(void);
+int isWallFollowTrimActive(void);
+int isControllerTurning(void);
 
 #endif /* CONTROLLER_H */

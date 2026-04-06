@@ -16,6 +16,21 @@ static int motor_stop_latched = 0;
 #define MOTOR_MAX_VOLTAGE_V (6.0f)
 #define MOTOR_MAX_DUTY_CYCLE (MOTOR_MAX_VOLTAGE_V / MOTOR_SUPPLY_VOLTAGE_V)
 
+// Project convention:
+// positive motor command  => robot drives forward
+// positive encoder counts => robot drives forward
+//
+// Mechanical direction:
+// left motor forward  = counter-clockwise
+// right motor forward = clockwise
+#define LEFT_MOTOR_FORWARD_IN1_STATE  (1)
+#define LEFT_MOTOR_FORWARD_IN2_STATE  (0)
+#define RIGHT_MOTOR_FORWARD_IN1_STATE (1)
+#define RIGHT_MOTOR_FORWARD_IN2_STATE (0)
+
+#define LEFT_ENCODER_FORWARD_SIGN  (1L)
+#define RIGHT_ENCODER_FORWARD_SIGN (-1L)
+
 static float clampDutyCycle(float speed)
 {
     float duty_cycle;
@@ -46,16 +61,21 @@ static float clampMotorCommand(float speed)
     return speed;
 }
 
+static long normalizeEncoderCounts(long raw_counts, long forward_sign)
+{
+    return forward_sign * raw_counts;
+}
+
 static void applyLeftMotorOutput(float speed)
 {
     float duty_cycle = clampDutyCycle(speed);
 
     if (speed > 0.0f) {
-        MOTOR_LEFT_IN1 = 1;
-        MOTOR_LEFT_IN2 = 0;
+        MOTOR_LEFT_IN1 = LEFT_MOTOR_FORWARD_IN1_STATE;
+        MOTOR_LEFT_IN2 = LEFT_MOTOR_FORWARD_IN2_STATE;
     } else if (speed < 0.0f) {
-        MOTOR_LEFT_IN1 = 0;
-        MOTOR_LEFT_IN2 = 1;
+        MOTOR_LEFT_IN1 = !LEFT_MOTOR_FORWARD_IN1_STATE;
+        MOTOR_LEFT_IN2 = !LEFT_MOTOR_FORWARD_IN2_STATE;
     } else {
         MOTOR_LEFT_IN1 = 0;
         MOTOR_LEFT_IN2 = 0;
@@ -69,11 +89,11 @@ static void applyRightMotorOutput(float speed)
     float duty_cycle = clampDutyCycle(speed);
 
     if (speed > 0.0f) {
-        MOTOR_RIGHT_IN1 = 0;
-        MOTOR_RIGHT_IN2 = 1;
+        MOTOR_RIGHT_IN1 = RIGHT_MOTOR_FORWARD_IN1_STATE;
+        MOTOR_RIGHT_IN2 = RIGHT_MOTOR_FORWARD_IN2_STATE;
     } else if (speed < 0.0f) {
-        MOTOR_RIGHT_IN1 = 1;
-        MOTOR_RIGHT_IN2 = 0;
+        MOTOR_RIGHT_IN1 = !RIGHT_MOTOR_FORWARD_IN1_STATE;
+        MOTOR_RIGHT_IN2 = !RIGHT_MOTOR_FORWARD_IN2_STATE;
     } else {
         MOTOR_RIGHT_IN1 = 0;
         MOTOR_RIGHT_IN2 = 0;
@@ -132,24 +152,24 @@ void initEncoders(void)
 
 long readLeftEncoderCounts(void)
 {
-    long counts;
+    long raw_counts;
 
     _NSTDIS = 1;
-    counts = left_encoder_turns + POS1CNT;
+    raw_counts = left_encoder_turns + POS1CNT;
     _NSTDIS = 0;
 
-    return counts;
+    return normalizeEncoderCounts(raw_counts, LEFT_ENCODER_FORWARD_SIGN);
 }
 
 long readRightEncoderCounts(void)
 {
-    long counts;
+    long raw_counts;
 
     _NSTDIS = 1;
-    counts = right_encoder_turns + POS2CNT;
+    raw_counts = right_encoder_turns + POS2CNT;
     _NSTDIS = 0;
 
-    return counts;
+    return normalizeEncoderCounts(raw_counts, RIGHT_ENCODER_FORWARD_SIGN);
 }
 
 float readLeftMotorSpeedMps(void)
@@ -180,7 +200,7 @@ float readRightMotorSpeedMps(void)
     // counts_per_wheel_rev = 16 pulses * 4 quadrature edges * 33 gear ratio = 2112 counts/rev
     // wheel_circumference = pi * 0.06 m
     // speed = (delta_counts / counts_per_wheel_rev) * wheel_circumference / 0.01 s
-    speed_mps = -((float)delta_counts / ENCODER_COUNTS_PER_WHEEL_REV) * wheel_circumference_m / TIMER_SAMPLE_TIME_S;
+    speed_mps = ((float)delta_counts / ENCODER_COUNTS_PER_WHEEL_REV) * wheel_circumference_m / TIMER_SAMPLE_TIME_S;
     previous_counts = current_counts;
 
     return speed_mps;
