@@ -47,3 +47,5 @@ private/
 !cmake/**/user.cmake
 cmake/**/.generated/*
 cmake/**/CMake*
+
+.codex
