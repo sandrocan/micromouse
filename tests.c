@@ -1,6 +1,5 @@
 #include "tests.h"
 
-#include "IOconfig.h"
 #include "motors.h"
 #include "selfdestruct.h"
 
@@ -21,9 +20,8 @@
 // Entry point 5: base speed for the wall-follow drive test in mm/s
 #define WALL_FOLLOW_BASE_TARGET_MMPS (500)
 
-// Entry point 6: wall-follow trim controller gains
+// Entry point 6: wall-follow trim controller gain
 #define WALL_FOLLOW_TRIM_KP (0.08f)
-#define WALL_FOLLOW_TRIM_KI (0.0f)
 
 // Entry point 7: limit for wall-follow trim in mm/s
 #define WALL_FOLLOW_MAX_TRIM_MMPS (60)
@@ -68,7 +66,6 @@ typedef struct {
     float right_target_mps;
     float left_integral;
     float right_integral;
-    float trim_integral_mmps;
     float trim_output_mmps;
     float left_command;
     float right_command;
@@ -79,7 +76,7 @@ typedef struct {
 } WallFollowDriveTestState;
 
 static WallFollowDriveTestState wall_follow_drive_test = {0};
-static unsigned int button_led_indicator_state = 0;
+static unsigned int button_drive_enabled = 0;
 
 static float clampUnit(float value)
 {
@@ -94,32 +91,9 @@ static float clampUnit(float value)
     return value;
 }
 
-static void applyButtonLedIndicatorState(void)
-{
-    switch (button_led_indicator_state) {
-        case 1:
-            LED_RED = LEDON;
-            LED_BLUE = LEDOFF;
-            break;
-        case 2:
-            LED_RED = LEDOFF;
-            LED_BLUE = LEDON;
-            break;
-        case 3:
-            LED_RED = LEDON;
-            LED_BLUE = LEDON;
-            break;
-        default:
-            LED_RED = LEDOFF;
-            LED_BLUE = LEDOFF;
-            break;
-    }
-}
-
 void initButtonLedIndicator(void)
 {
-    button_led_indicator_state = 0U;
-    applyButtonLedIndicatorState();
+    button_drive_enabled = 0U;
     clearSelfDestructPressFlag();
 }
 
@@ -130,18 +104,12 @@ void updateButtonLedIndicator(void)
     }
 
     clearSelfDestructPressFlag();
-    button_led_indicator_state++;
-
-    if (button_led_indicator_state > 3U) {
-        button_led_indicator_state = 0U;
-    }
-
-    applyButtonLedIndicatorState();
+    button_drive_enabled = !button_drive_enabled;
 }
 
 int isButtonLedDriveEnabled(void)
 {
-    return (button_led_indicator_state != 0U);
+    return (button_drive_enabled != 0U);
 }
 
 static float clampSymmetric(float value, float limit)
@@ -161,28 +129,6 @@ static void resetRightMotorPiTest(void)
 {
     right_motor_pi_test.integral = 0.0f;
     right_motor_pi_test.command = 0.0f;
-}
-
-static void applyRightMotorPiLedState(void)
-{
-    switch (right_motor_pi_test.state) {
-        case 1:
-            LED_RED = LEDON;
-            LED_BLUE = LEDOFF;
-            break;
-        case 2:
-            LED_RED = LEDOFF;
-            LED_BLUE = LEDON;
-            break;
-        case 3:
-            LED_RED = LEDON;
-            LED_BLUE = LEDON;
-            break;
-        default:
-            LED_RED = LEDOFF;
-            LED_BLUE = LEDOFF;
-            break;
-    }
 }
 
 static void applyRightMotorPiTargetState(void)
@@ -219,7 +165,6 @@ static void updateRightMotorPiButtonState(void)
     }
 
     applyRightMotorPiTargetState();
-    applyRightMotorPiLedState();
 }
 
 void initRightMotorPiTest(void)
@@ -228,7 +173,6 @@ void initRightMotorPiTest(void)
     right_motor_pi_test.state = 0;
     resetRightMotorPiTest();
     applyRightMotorPiTargetState();
-    applyRightMotorPiLedState();
     clearSelfDestructPressFlag();
     setLeftMotor(0.0f);
     setRightMotor(0.0f);
@@ -273,28 +217,6 @@ static void resetLeftMotorPiTest(void)
     left_motor_pi_test.command = 0.0f;
 }
 
-static void applyLeftMotorPiLedState(void)
-{
-    switch (left_motor_pi_test.state) {
-        case 1:
-            LED_RED = LEDON;
-            LED_BLUE = LEDOFF;
-            break;
-        case 2:
-            LED_RED = LEDOFF;
-            LED_BLUE = LEDON;
-            break;
-        case 3:
-            LED_RED = LEDON;
-            LED_BLUE = LEDON;
-            break;
-        default:
-            LED_RED = LEDOFF;
-            LED_BLUE = LEDOFF;
-            break;
-    }
-}
-
 static void applyLeftMotorPiTargetState(void)
 {
     switch (left_motor_pi_test.state) {
@@ -329,7 +251,6 @@ static void updateLeftMotorPiButtonState(void)
     }
 
     applyLeftMotorPiTargetState();
-    applyLeftMotorPiLedState();
 }
 
 void initLeftMotorPiTest(void)
@@ -338,7 +259,6 @@ void initLeftMotorPiTest(void)
     left_motor_pi_test.state = 0;
     resetLeftMotorPiTest();
     applyLeftMotorPiTargetState();
-    applyLeftMotorPiLedState();
     clearSelfDestructPressFlag();
     setLeftMotor(0.0f);
     setRightMotor(0.0f);
@@ -385,17 +305,6 @@ static void resetDualMotorPiDriveTest(void)
     dual_motor_pi_drive_test.right_command = 0.0f;
 }
 
-static void applyDualMotorPiDriveLedState(void)
-{
-    if (dual_motor_pi_drive_test.enabled) {
-        LED_RED = LEDON;
-        LED_BLUE = LEDON;
-    } else {
-        LED_RED = LEDOFF;
-        LED_BLUE = LEDOFF;
-    }
-}
-
 static void updateDualMotorPiDriveButtonState(void)
 {
     if (!selfDestructWasPressed()) {
@@ -416,8 +325,6 @@ static void updateDualMotorPiDriveButtonState(void)
         resetDualMotorPiDriveTest();
         stopMotors();
     }
-
-    applyDualMotorPiDriveLedState();
 }
 
 void initDualMotorPiDriveTest(void)
@@ -427,7 +334,6 @@ void initDualMotorPiDriveTest(void)
     dual_motor_pi_drive_test.right_target_mps = 0.0f;
     dual_motor_pi_drive_test.enabled = 0;
     resetDualMotorPiDriveTest();
-    applyDualMotorPiDriveLedState();
     clearSelfDestructPressFlag();
     stopMotors();
 }
@@ -481,7 +387,6 @@ static void resetWallFollowDriveTest(void)
 {
     wall_follow_drive_test.left_integral = 0.0f;
     wall_follow_drive_test.right_integral = 0.0f;
-    wall_follow_drive_test.trim_integral_mmps = 0.0f;
     wall_follow_drive_test.trim_output_mmps = 0.0f;
     wall_follow_drive_test.left_command = 0.0f;
     wall_follow_drive_test.right_command = 0.0f;
@@ -495,17 +400,6 @@ static unsigned int absoluteSensorDelta(unsigned int a, unsigned int b)
     }
 
     return b - a;
-}
-
-static void applyWallFollowDriveLedState(void)
-{
-    if (wall_follow_drive_test.enabled) {
-        LED_RED = LEDON;
-        LED_BLUE = LEDON;
-    } else {
-        LED_RED = LEDOFF;
-        LED_BLUE = LEDOFF;
-    }
 }
 
 static void updateWallFollowDriveButtonState(void)
@@ -527,8 +421,6 @@ static void updateWallFollowDriveButtonState(void)
         resetWallFollowDriveTest();
         stopMotors();
     }
-
-    applyWallFollowDriveLedState();
 }
 
 void initWallFollowDriveTest(void)
@@ -540,7 +432,6 @@ void initWallFollowDriveTest(void)
     wall_follow_drive_test.previous_right_sensor_value = 0U;
     wall_follow_drive_test.enabled = 0;
     resetWallFollowDriveTest();
-    applyWallFollowDriveLedState();
     clearSelfDestructPressFlag();
     stopMotors();
 }
@@ -552,7 +443,6 @@ void updateWallFollowDriveTest(float measured_left_speed_mps,
 {
     float wall_error;
     float trim_proportional_mmps;
-    float trim_total_mmps;
     float left_error;
     float right_error;
     float left_proportional;
@@ -580,13 +470,9 @@ void updateWallFollowDriveTest(float measured_left_speed_mps,
     if (wall_follow_drive_test.trim_enabled) {
         wall_error = (float)right_sensor_value - (float)left_sensor_value;
         trim_proportional_mmps = WALL_FOLLOW_TRIM_KP * wall_error;
-        wall_follow_drive_test.trim_integral_mmps +=
-            WALL_FOLLOW_TRIM_KI * wall_error * RIGHT_PI_TEST_SAMPLE_TIME_S;
-        trim_total_mmps = trim_proportional_mmps + wall_follow_drive_test.trim_integral_mmps;
         wall_follow_drive_test.trim_output_mmps =
-            clampSymmetric(trim_total_mmps, (float)WALL_FOLLOW_MAX_TRIM_MMPS);
+            clampSymmetric(trim_proportional_mmps, (float)WALL_FOLLOW_MAX_TRIM_MMPS);
     } else {
-        wall_follow_drive_test.trim_integral_mmps = 0.0f;
         wall_follow_drive_test.trim_output_mmps = 0.0f;
     }
 

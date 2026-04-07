@@ -110,6 +110,7 @@ int main() {
         } else if (turn_trigger_armed) {
           driveStraight(0);
           turnLeft90();
+
           turn_trigger_armed = 0U;
         } else {
           driveStraight(500);
