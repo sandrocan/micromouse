@@ -1,0 +1,47 @@
+{
+    "version": "1.9",
+    "propertyGroups": [
+        {
+            "name": "default-XC16",
+            "type": "toolchain",
+            "provider": "microchip.toolchains:xc16@2.10",
+            "properties": {}
+        },
+        {
+            "name": "default-tool-base",
+            "type": "tool",
+            "properties": {}
+        }
+    ],
+    "fileSets": [
+        {
+            "name": "default",
+            "files": [
+                {
+                    "include": "**/*",
+                    "exclude": "**/(_build|out|cmake|.vscode|old)/**/*"
+                }
+            ]
+        }
+    ],
+    "configurations": [
+        {
+            "name": "default",
+            "id": "",
+            "device": "dsPIC33FJ128MC804",
+            "imagePath": "./out/micromouse/default.elf",
+            "toolProperties": "default-tool-base",
+            "tool": "PICkit 4",
+            "packs": [
+                {
+                    "name": "dsPIC33F-GP-MC_DFP",
+                    "vendor": "Microchip",
+                    "version": "1.4.235"
+                }
+            ],
+            "fileSet": "default",
+            "toolchain": "default-XC16",
+            "includeLegacyMacros": true
+        }
+    ]
+}

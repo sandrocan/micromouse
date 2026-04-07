@@ -1,13 +1,11 @@
-/* 
- * File:   main.c
- * Author: Alexander Lenz
- *
- * Created on 27 Nov 2020, 09:36
+/*  FILE: main.c
+ *  Authors: 
+ *  
+ *  Micromouse
+ *  Wintersemester 2025
  */
 
-
-/// Configuration Bits---------------------------
-
+/// Configuration Bits
 // FBS
 #pragma config BWRP = WRPROTECT_OFF     // Boot Segment Write Protect (Boot Segment may be written)
 #pragma config BSS = NO_FLASH           // Boot Segment Program Flash Code Protection (No Boot program Flash segment)
@@ -43,96 +41,85 @@
 #pragma config ICS = PGD1               // Comm Channel Select (Communicate on PGC1/EMUC1 and PGD1/EMUD1)
 #pragma config JTAGEN = OFF             // JTAG Port Enable (JTAG is Disabled)
 
-
-/// Include headers-------------------------------
+/// Headers
 #include <xc.h>
 #include "IOconfig.h"
-#include "myTimers.h"
-#include "myPWM.h"
-#include "serialComms.h"
-#include "dma.h"
 #include "adc.h"
-#include "motorEncoders.h"
+#include "dma.h"
+#include "pwm.h"
+#include "timers.h"
+#include "uart.h"
+#include "motors.h"
+#include "selfdestruct.h"
+#include "controller.h"
+#include "tests.h"
 
 
-/// Defines----------------------------
-#define SEVEN_MEG_OSC 1//set to 1 if we use slow (7.3728 MHz) oscillator and not 16 MHz
+int main() {
+  unsigned int turn_trigger_armed = 1U;
 
-/*
- * 
- */
-int main() 
-{
-    //int pinStatus;
-#if (SEVEN_MEG_OSC == 0) 
-     /*** oscillator setup --------------------------------------------------
-     * The external oscillator runs at 16MHz
-     * PLL is used to generate 53.3 MHz clock (FOSC)
-     * The relationship between oscillator and cycle frequency: FCY = FOSC/2
-     * Have a look at "PLL Configuration" paragraph in the mcu manual
-    
-     * Result: FCY = 0.5 * (16MHz*20/(3*2)) = 26.666 MIPS, Tcycle=37.5nsec
-    ---------------------------------------------------------------------***/
-    PLLFBDbits.PLLDIV = 18;                      //set PPL to M=20 (18+2)
-    CLKDIVbits.PLLPRE = 1;            //N1 = input/3
-    CLKDIVbits.PLLPOST = 0;           //N2 = output/2
-    
-    
-    
-#else //Below the 7.3728 Setup 
-    
-         /*** oscillator setup --------------------------------------------------
-     * The external oscillator runs at 7.3728 MHz
-     * PLL is used to generate 53.3 MHz clock (FOSC)
-     * The relationship between oscillator and cycle frequency: FCY = FOSC/2
-     * Have a look at "PLL Configuration" paragraph in the mcu manual
-    
-     * Result: FCY = 0.5 * (7.3728 MHz*29/(2*2)) = 26.73 MIPS, which is 
-          * not exactl Tcycle=37.5nsec, but close enough for our purposes
-    ---------------------------------------------------------------------***/
-    PLLFBDbits.PLLDIV = 27;                      //set PPL to M=29 (27+2)
-    CLKDIVbits.PLLPRE = 0;            //N1 = input/2
-    CLKDIVbits.PLLPOST = 0;           //N2 = output/2
-#endif //SEVEN_MEG_OSC == 0
-    
-    
-        /* Clock switch to incorporate PLL*/ 
-    __builtin_write_OSCCONH( 0x03 );            // Initiate Clock Switch to Primary
+  ///Internal Fcycle = 80 MHz
+  // 16MHz Oscillator
+  // /2 (PLLPRE)
+  // *20 (PLLDIV)
+  // /2 (PLLPOST)
+  PLLFBDbits.PLLDIV = 18;
+  CLKDIVbits.PLLPRE = 0;            
+  CLKDIVbits.PLLPOST = 0;
 
-    // Oscillator with PLL (NOSC=0b011)
-    __builtin_write_OSCCONL( OSCCON || 0x01 );  // Start clock switching
-    
-    while( OSCCONbits.COSC != 0b011 );
-    
-    // In reality, give some time to the PLL to lock
-    while (OSCCONbits.LOCK != 1); //Wait for PPL to lock
- 
-    setupIO(); //configures inputs and outputs
-    initTimer1(4166); //creates a 10ms timer interrupt 4166
-    //initTimer1InMS(200);
-    setupUART1();
-    initQEI1(0);
-    initDmaChannel4();
-    setupADC1();
-    startADC1();
-    setupPWM();
-    startTimer1();
-    
-    LED4 = LEDOFF; //switches off
-  
-    LED5 = LEDOFF;
- 
-    //LED6 = LEDON;
+  __builtin_write_OSCCONH( 0x03 );  //Switch clock / activate 80Mhz
 
-    LED7 = LEDOFF;
+  __builtin_write_OSCCONL( OSCCON | 0x01 ); // Oscillator with PLL (NOSC=0b011)
 
-    while(1)
-    {
-        
+  while (OSCCONbits.COSC != 0b011); //Wait for OSC with PLL activated
+  while (OSCCONbits.LOCK != 1); //Wait for lock
 
-    };
- 
-    
-    return 0;
+
+  ///INIT
+  setupIO();
+  setupUART();
+  initBluetooth();
+  initTimer1ms(10);
+  initTimer2ms(10);
+  setupPWM();
+  initMotors();
+  initEncoders();
+  setupADC1();
+  startADC1();
+  initDMA();
+  initSelfDestructInterrupt();
+  initButtonLedIndicator();
+  initController();
+  driveStraight(0);
+  startTimer1();
+  startTimer2();
+
+  while(1) {
+    unsigned int mid_sensor_value;
+
+    updateButtonLedIndicator();
+    if (isButtonLedDriveEnabled()) {
+      mid_sensor_value = readMidSensorValue();
+
+      if (isControllerTurning()) {
+        turn_trigger_armed = 0U;
+      } else {
+        if (mid_sensor_value <= 1000U) {
+          turn_trigger_armed = 1U;
+          driveStraight(500);
+        } else if (turn_trigger_armed) {
+          driveStraight(0);
+          turnLeft90();
+          turn_trigger_armed = 0U;
+        } else {
+          driveStraight(500);
+        }
+      }
+    } else {
+      driveStraight(0);
+      turn_trigger_armed = 1U;
+    }
+  }
+
+  return 0;
 }
-

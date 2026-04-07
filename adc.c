@@ -1,21 +1,8 @@
-
-/*! \file   adc.c
- * Author: Alexander Lenz
- *
- * Created on 10 Oct 2018, 16:53
- */
-
 #include "adc.h"
 #include <xc.h>
+#include "dma.h"
 
 
-
-
-void startADC1(void)
-{
-        AD1CON1bits.ADON=1; //set on-bit
-        AD1CON1bits.ASAM=1;
-}
 
 
 
@@ -56,8 +43,8 @@ void setupADC1()
     AD1CON2bits.CSCNA=1; //enable analog input SCAN on channel 0
     AD1CON2bits.CHPS=0b11; // important for 10 bit mode //unimplemented in 12-bit mode
     //AD1CON2bits.BUFS=x; //indicates which buffer is currently written (only if BUFM=1)
-    AD1CON2bits.SMPI=1;//!!!CHANGE HERE!!! Selects Increment Rate for DMA Addresses bits or number of sample/conversion operations per interrupt
-                       // update, now only set  to 1 because we scan 2 channels
+    AD1CON2bits.SMPI=2;// Selects Increment Rate for DMA Addresses bits or number of sample/conversion operations per interrupt
+                       // update, now only set  to 2 because we scan 3 channels
     AD1CON2bits.BUFM=0; //always fill buffer starting at address 0x00
     AD1CON2bits.ALTS=0; //always use channel A and do not alternate
 
@@ -73,7 +60,7 @@ void setupADC1()
 
 
     //AD1CSSL (input scan select register)
-    AD1CSSL= 0b0000000000100001; //select the analog channel 0 and 5 !!!CHANGE HERE!!!
+    AD1CSSL= 0b0000000100000011; //select the analog channel 0,1 and 8
 
 
     AD1CHS123bits.CH123NA = 0b00; //negative input for S/H 123 is Vref -
@@ -81,8 +68,29 @@ void setupADC1()
     //interrupt configuration
 
     IFS0bits.AD1IF = 0;
-    IEC0bits.AD1IE = 0;
+    IEC0bits.AD1IE = 0; //interrupt off
     IPC3bits.AD1IP = 5;
 
 }
 
+
+void startADC1(void)
+{
+        AD1CON1bits.ADON=1; //set on-bit
+        AD1CON1bits.ASAM=1;
+}
+
+unsigned int readLeftSensorValue(void)
+{
+    return SENSOR_LEFT;
+}
+
+unsigned int readMidSensorValue(void)
+{
+    return SENSOR_MIDDLE;
+}
+
+unsigned int readRightSensorValue(void)
+{
+    return SENSOR_RIGHT;
+}
