@@ -15,7 +15,7 @@
 
 // Wall-follow trim gain for raw side sensor error values. The sign is applied
 // in the controller update so positive sensor error steers away from the wall.
-#define WALL_TRIM_KP (0.08f)
+#define WALL_TRIM_KP (0.50f)
 #define WALL_TRIM_MAX_MMPS (300.0f)
 
 // Sensor ranges for the wall-follow mode selection.
@@ -23,12 +23,16 @@
 #define WALL_SENSOR_WALL_MAX (2200U)
 #define WALL_SENSOR_NONE_MAX (150U)
 #define WALL_SENSOR_TARGET_SINGLE_WALL (1150.0f)
-#define WALL_MODE_SWITCH_CONFIRM_FRAMES (3U)
+#define WALL_MODE_SWITCH_CONFIRM_FRAMES (8U)
+#define WALL_MODE_SIGNAL_LOSS_CONFIRM_FRAMES (1U)
+#define WALL_MODE_EXIT_BOTH_CONFIRM_FRAMES (1U)
+#define WALL_MODE_ENTER_BOTH_CONFIRM_FRAMES (18U)
+#define WALL_MODE_TURN_REACQUIRE_FRAMES (20U)
 
 // In-place 90 degree turns use the same wheel speed on both sides with opposite
 // directions and stop once the average encoder travel reaches this count.
 #define TURN_SPEED_MMPS (500)
-#define TURN_90_TARGET_COUNTS (650)
+#define TURN_90_TARGET_COUNTS (700)
 
 typedef enum {
     CONTROLLER_MODE_STOP = 0,
@@ -54,6 +58,7 @@ typedef struct {
     long turn_start_right_counts;
     unsigned int wall_follow_enabled;
     unsigned int wall_mode_candidate_count;
+    unsigned int wall_mode_turn_reacquire_count;
     ControllerMode mode;
 } DriveControllerState;
 
@@ -66,6 +71,7 @@ static DriveControllerState drive_controller = {
     .turn_start_right_counts = 0L,
     .wall_follow_enabled = 1U,
     .wall_mode_candidate_count = 0U,
+    .wall_mode_turn_reacquire_count = 0U,
     .mode = CONTROLLER_MODE_STOP
 };
 
@@ -187,6 +193,21 @@ static void updateWallModeLeds(WallFollowMode wall_mode)
 
 static WallFollowMode updateStableWallMode(WallFollowMode detected_wall_mode)
 {
+    unsigned int required_confirm_frames = WALL_MODE_SWITCH_CONFIRM_FRAMES;
+    unsigned int stable_has_left_wall;
+    unsigned int stable_has_right_wall;
+    unsigned int detected_has_left_wall;
+    unsigned int detected_has_right_wall;
+
+    if ((drive_controller.wall_mode_turn_reacquire_count > 0U)
+        && ((detected_wall_mode == WALL_MODE_LEFT_ONLY)
+            || (detected_wall_mode == WALL_MODE_RIGHT_ONLY))) {
+        stable_wall_mode = detected_wall_mode;
+        candidate_wall_mode = detected_wall_mode;
+        drive_controller.wall_mode_candidate_count = 0U;
+        return stable_wall_mode;
+    }
+
     if (detected_wall_mode == stable_wall_mode) {
         candidate_wall_mode = detected_wall_mode;
         drive_controller.wall_mode_candidate_count = 0U;
@@ -199,11 +220,30 @@ static WallFollowMode updateStableWallMode(WallFollowMode detected_wall_mode)
         return stable_wall_mode;
     }
 
-    if (drive_controller.wall_mode_candidate_count < WALL_MODE_SWITCH_CONFIRM_FRAMES) {
+    stable_has_left_wall =
+        (stable_wall_mode == WALL_MODE_BOTH) || (stable_wall_mode == WALL_MODE_LEFT_ONLY);
+    stable_has_right_wall =
+        (stable_wall_mode == WALL_MODE_BOTH) || (stable_wall_mode == WALL_MODE_RIGHT_ONLY);
+    detected_has_left_wall =
+        (candidate_wall_mode == WALL_MODE_BOTH) || (candidate_wall_mode == WALL_MODE_LEFT_ONLY);
+    detected_has_right_wall =
+        (candidate_wall_mode == WALL_MODE_BOTH) || (candidate_wall_mode == WALL_MODE_RIGHT_ONLY);
+
+    if ((stable_has_left_wall && !detected_has_left_wall)
+        || (stable_has_right_wall && !detected_has_right_wall)) {
+        required_confirm_frames = WALL_MODE_SIGNAL_LOSS_CONFIRM_FRAMES;
+    } else if ((stable_wall_mode == WALL_MODE_BOTH)
+               && (candidate_wall_mode != WALL_MODE_BOTH)) {
+        required_confirm_frames = WALL_MODE_EXIT_BOTH_CONFIRM_FRAMES;
+    } else if (candidate_wall_mode == WALL_MODE_BOTH) {
+        required_confirm_frames = WALL_MODE_ENTER_BOTH_CONFIRM_FRAMES;
+    }
+
+    if (drive_controller.wall_mode_candidate_count < required_confirm_frames) {
         drive_controller.wall_mode_candidate_count++;
     }
 
-    if (drive_controller.wall_mode_candidate_count >= WALL_MODE_SWITCH_CONFIRM_FRAMES) {
+    if (drive_controller.wall_mode_candidate_count >= required_confirm_frames) {
         stable_wall_mode = candidate_wall_mode;
         drive_controller.wall_mode_candidate_count = 0U;
     }
@@ -220,6 +260,7 @@ void initController(void)
     drive_controller.turn_start_right_counts = 0L;
     drive_controller.wall_follow_enabled = 1U;
     drive_controller.wall_mode_candidate_count = 0U;
+    drive_controller.wall_mode_turn_reacquire_count = 0U;
     drive_controller.mode = CONTROLLER_MODE_STOP;
     stable_wall_mode = WALL_MODE_NONE;
     candidate_wall_mode = WALL_MODE_NONE;
@@ -311,6 +352,7 @@ void updateController(float measured_left_speed_mps,
             drive_controller.base_target_mps = 0.0f;
             drive_controller.left_speed.target_mps = 0.0f;
             drive_controller.right_speed.target_mps = 0.0f;
+            drive_controller.wall_mode_turn_reacquire_count = WALL_MODE_TURN_REACQUIRE_FRAMES;
             resetSpeedPiController(&drive_controller.left_speed);
             resetSpeedPiController(&drive_controller.right_speed);
             resetWallTrimState();
@@ -329,6 +371,10 @@ void updateController(float measured_left_speed_mps,
         setLeftMotor(updateSpeedPiController(&drive_controller.left_speed, measured_left_speed_mps));
         setRightMotor(updateSpeedPiController(&drive_controller.right_speed, measured_right_speed_mps));
         return;
+    }
+
+    if (drive_controller.wall_mode_turn_reacquire_count > 0U) {
+        drive_controller.wall_mode_turn_reacquire_count--;
     }
 
     if (drive_controller.wall_follow_enabled) {
