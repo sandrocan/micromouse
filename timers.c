@@ -184,4 +184,16 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
 void __attribute__((__interrupt__, auto_psv)) _T2Interrupt(void)
 {
     IFS0bits.T2IF = 0;           // reset Timer 2 interrupt flag
+
+    // Blaulicht: toggle RB10/RB11 (complementary) at ~3 Hz
+    static int blaulicht_cnt = 0;
+    blaulicht_cnt++;
+    if (blaulicht_cnt >= 8) {  // 17 * 10ms = 170ms -> ~3 Hz
+        blaulicht_cnt = 0;
+        if (P1DC3 == 0) {
+            P1DC3 = PWM_MAX;    // PWM1H3 (RB10) HIGH, PWM1L3 (RB11) LOW
+        } else {
+            P1DC3 = 0;          // PWM1H3 (RB10) LOW, PWM1L3 (RB11) HIGH
+        }
+    }
 }

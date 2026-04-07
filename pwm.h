@@ -16,5 +16,6 @@ void setupPWM();
 void setDCMotorLeft(float dc);
 void setDCMotorRight(float dc);
 void setDCLEDGreen(float dc);
+void setDCExtra(float dc);
 
 #endif /* PWM_H */

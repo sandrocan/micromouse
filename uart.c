@@ -12,7 +12,7 @@ static void uartDelayCycles(unsigned long cycles)
 static void uartDelayMs(unsigned int ms)
 {
     while (ms-- > 0U) {
-        uartDelayCycles(20000UL);
+        uartDelayCycles(2000UL);
     }
 }
 

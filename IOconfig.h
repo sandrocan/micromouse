@@ -47,8 +47,8 @@
 
 
 //#define EXTRA7 LATCbits.LATC7
-//#define EXTRA5 LATBbits.LATB10
-//#define EXTRA3 LATBbits.LATB11
+#define EXTRA5 LATBbits.LATB10
+#define EXTRA3 LATBbits.LATB11
 //#define EXTRA1 LATBbits.LATB13
 
 void setupIO();

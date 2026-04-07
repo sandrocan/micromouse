@@ -14,14 +14,15 @@ void setupPWM() {
     P2TPER = PWM_MAX/2;
 
     PWM1CON1bits.PMOD1 = 1; // set PWM units to independent mode
+    PWM1CON1bits.PMOD3 = 0; // complementary mode for PWM1 channel 3 (Blaulicht)
     PWM2CON1bits.PMOD1 = 1;
     
     PWM1CON1bits.PEN1H = 1; // enable PWM driver PWM1H1 (Motor left)
     PWM1CON1bits.PEN2H = 1; // enable PWM driver PMW1H2 (Motor right)
-    PWM1CON1bits.PEN3H = 0; // disable PWM driver
+    PWM1CON1bits.PEN3H = 1; // enable PWM driver PWM1H3 (RB10 / EXTRA5)
     PWM1CON1bits.PEN1L = 0; // disable PWM driver
     PWM1CON1bits.PEN2L = 0; // disable PWM driver
-    PWM1CON1bits.PEN3L = 0; // disable PWM driver
+    PWM1CON1bits.PEN3L = 1; // enable PWM driver PWM1L3 (RB11 / EXTRA3)
 
     PWM2CON1bits.PEN1H = 1; // enable PWM driver PWM2H1 (LED_GREEN)
     PWM2CON1bits.PEN1L = 1; // (EXTRA 7)
@@ -32,6 +33,7 @@ void setupPWM() {
     P2TCONbits.PTEN = 1;
     P1DC1 = 0;
     P1DC2 = 0;
+    P1DC3 = 0;
     P2DC1 = 0;
 }
 
@@ -50,3 +52,8 @@ void setDCMotorRight(float dc){
 void setDCLEDGreen(float dc){
     P2DC1 = dc * PWM_MAX;
 }
+
+void setDCExtra(float dc){
+    P1DC3 = dc * PWM_MAX;
+}
+

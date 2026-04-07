@@ -23,7 +23,11 @@
     TRISCbits.TRISC9 = 1;
     TRISBbits.TRISB12 = 0;
     TRISBbits.TRISB5 = 0;
-    TRISBbits.TRISB6 = 0;    
+    TRISBbits.TRISB6 = 0;
+
+    //Blue LEDs TOP
+    TRISBbits.TRISB10 = 0;
+    TRISBbits.TRISB11 = 0;
 
     //Sensoren
     TRISAbits.TRISA0 = 1;
