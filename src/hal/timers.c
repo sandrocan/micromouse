@@ -156,8 +156,8 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
     unsigned int left_sensor_value;
     unsigned int right_sensor_value;
 
-    left_speed_mps = readLeftMotorSpeedMps();
-    right_speed_mps = readRightMotorSpeedMps();
+    // left_speed_mps = readLeftMotorSpeedMps();
+    // right_speed_mps = readRightMotorSpeedMps();
     left_sensor_value = readLeftSensorValue();
     right_sensor_value = readRightSensorValue();
     updateController();
@@ -170,7 +170,7 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
                  "left=%d right=%d target=%d ls=%u rs=%u lcmd=%d rcmd=%d\r\n",
                  (int)(left_speed_mps * 1000.0f),
                  (int)(right_speed_mps * 1000.0f),
-                 getDriveTargetSpeedMmps(),
+                 getLeftTargetSpeedMmps(),
                  left_sensor_value,
                  right_sensor_value,
                  getLeftMotorCommandPermille(),

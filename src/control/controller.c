@@ -27,14 +27,13 @@ typedef struct
 {
     float target_speed_mps;
     float integral_term;
-    float motor_command;
+    float adjusted_speed_mps;
 } WheelSpeedController;
 
 typedef struct
 {
     WheelSpeedController left_wheel;
     WheelSpeedController right_wheel;
-    float drive_target_speed_mps;
     long left_turn_start_counts;
     long right_turn_start_counts;
     DriveMode mode;
@@ -70,49 +69,14 @@ static long absoluteCountDelta(long value)
 static void resetWheelSpeedController(WheelSpeedController *controller)
 {
     controller->integral_term = 0.0f;
-    controller->motor_command = 0.0f;
+    controller->adjusted_speed_mps = 0.0f;
 }
 
-static float updateWheelSpeedController(WheelSpeedController *ctrl_right, WheelSpeedController *ctrl_left)
-{
-    
 
-    // Drive motors with same speed based on measured motor speed
-    float speed_error = controller->target_speed_mps - measured_wheel_speed_mps;
-    float proportional_term = WHEEL_SPEED_KP * speed_error;
-
-    controller->integral_term += WHEEL_SPEED_KI * speed_error * WHEEL_SPEED_SAMPLE_TIME_S;
-    controller->motor_command = clampMotorCommand(proportional_term + controller->integral_term);
-
-    // Adjust motor speed such that mouse stays centered based on sensor readings
-    unsigned int dist_right = getRightSensorValue();
-    unsigned int dist_left = getLeftSensorValue(); 
-
-    if (dist_right < 500 || dist_left < 500)
-    {
-        return controller->motor_command;   // Case: Only single wall detected
-
-    }
-    else
-    {
-        int diff = dist_right - dist_left;
-        if (diff < 100 && diff > -100)
-        {
-            return controller->motor_command;
-        }
-        else if (diff < 0)
-        {
-
-        }
-    }
-
-    return controller->motor_command;
-}
 
 static void stopDriveControl(void)
 {
     drive_state.mode = CONTROLLER_MODE_STOP;
-    drive_state.drive_target_speed_mps = 0.0f;
     drive_state.left_wheel.target_speed_mps = 0.0f;
     drive_state.right_wheel.target_speed_mps = 0.0f;
     resetWheelSpeedController(&drive_state.left_wheel);
@@ -122,7 +86,6 @@ static void stopDriveControl(void)
 
 void initController(void)
 {
-    drive_state.drive_target_speed_mps = 0.0f;
     drive_state.left_wheel.target_speed_mps = 0.0f;
     drive_state.right_wheel.target_speed_mps = 0.0f;
     drive_state.left_turn_start_counts = 0L;
@@ -139,7 +102,9 @@ void initController(void)
 void setDriveSpeedMmps(int speed_mmps)
 {
     drive_state.mode = (speed_mmps == 0) ? CONTROLLER_MODE_STOP : CONTROLLER_MODE_DRIVE_STRAIGHT;
-    drive_state.drive_target_speed_mps = ((float)speed_mmps) / 1000.0f;
+    
+    drive_state.left_wheel.target_speed_mps = ((float)speed_mmps) / 1000.0f;
+    drive_state.right_wheel.target_speed_mps = ((float)speed_mmps) / 1000.0f;
 }
 
 
@@ -161,10 +126,28 @@ void turnRight90(void)
     resetWheelSpeedController(&drive_state.right_wheel);
 }
 
+static void updateWheelSpeedController(WheelSpeedController *controller, float measured_wheel_speed_mps)
+{
+    // Drive motors with same speed based on measured motor speed
+    float speed_error = controller->target_speed_mps - measured_wheel_speed_mps;
+    float proportional_term = WHEEL_SPEED_KP * speed_error;
+
+    controller->integral_term += WHEEL_SPEED_KI * speed_error * WHEEL_SPEED_SAMPLE_TIME_S;
+    controller->adjusted_speed_mps = clampMotorCommand((float) (proportional_term + controller->integral_term));
+}
+
 void updateController(void)
 {
     float measured_left_wheel_speed_mps = readLeftMotorSpeedMps();
     float measured_right_wheel_speed_mps = readRightMotorSpeedMps();
+
+    unsigned int dist_mid = readMidSensorValue();
+
+    if (dist_mid > 500)
+    {
+        stopDriveControl();
+        return;
+    }
 
     if (drive_state.mode == CONTROLLER_MODE_STOP)
     {
@@ -172,66 +155,63 @@ void updateController(void)
         return;
     }
 
-    // if ((drive_state.mode == CONTROLLER_MODE_TURN_LEFT_90) ||
-    //     (drive_state.mode == CONTROLLER_MODE_TURN_RIGHT_90))
+    updateWheelSpeedController(&drive_state.left_wheel, measured_left_wheel_speed_mps);
+    updateWheelSpeedController(&drive_state.right_wheel, measured_right_wheel_speed_mps);
+    
+    setLeftMotor(drive_state.left_wheel.adjusted_speed_mps);
+    setRightMotor(drive_state.right_wheel.adjusted_speed_mps);
+
+    // if (drive_state.mode == CONTROLLER_MODE_DRIVE_STRAIGHT)
     // {
-    //     left_turn_distance_counts =
-    //         absoluteCountDelta(readLeftEncoderCounts() - drive_state.left_turn_start_counts);
-    //     right_turn_distance_counts =
-    //         absoluteCountDelta(readRightEncoderCounts() - drive_state.right_turn_start_counts);
-    //     average_turn_distance_counts =
-    //         (left_turn_distance_counts + right_turn_distance_counts) / 2L;
+    //     // Set target speeds of the wheel speed controllers.
+    //     drive_state.left_wheel.target_speed_mps = drive_state.drive_target_speed_mps;
+    //     drive_state.right_wheel.target_speed_mps = drive_state.drive_target_speed_mps;
 
-    //     if (average_turn_distance_counts >= TURN_90_TARGET_COUNTS)
-    //     {
-    //         stopDriveControl();
-    //         return;
-    //     }
+    //     float left_speed = updateWheelSpeedController(&drive_state.left_wheel, measured_left_wheel_speed_mps);
+    //     float right_speed = updateWheelSpeedController(&drive_state.right_wheel, measured_right_wheel_speed_mps);
 
-    //     if (drive_state.mode == CONTROLLER_MODE_TURN_LEFT_90)
+    //     // Adjust motor speed such that mouse stays centered based on sensor readings
+    //     unsigned int dist_right = getRightSensorValue();
+    //     unsigned int dist_left = getLeftSensorValue(); 
+
+    //     if (dist_right < 500 || dist_left < 500)
     //     {
-    //         drive_state.left_wheel.target_speed_mps = -((float)TURN_SPEED_MMPS / 1000.0f);
-    //         drive_state.right_wheel.target_speed_mps = ((float)TURN_SPEED_MMPS / 1000.0f);
+    //         return controller->motor_command;   // Case: Only single wall detected
+    //         setLeftMotor(drive_state.left_);
+    //         setRightMotor();
     //     }
     //     else
     //     {
-    //         drive_state.left_wheel.target_speed_mps = ((float)TURN_SPEED_MMPS / 1000.0f);
-    //         drive_state.right_wheel.target_speed_mps = -((float)TURN_SPEED_MMPS / 1000.0f);
+    //         int diff = dist_right - dist_left;
+    //         if (diff < 100 && diff > -100)
+    //         {
+    //             return controller->motor_command;
+    //         }
+    //         else if (diff < 0)
+    //         {
+                
+    //         }
     //     }
-
-    //     setLeftMotor(updateWheelSpeedController(&drive_state.left_wheel,
-    //                                             measured_left_wheel_speed_mps));
-    //     setRightMotor(updateWheelSpeedController(&drive_state.right_wheel,
-    //                                              measured_right_wheel_speed_mps));
+        
+        
     //     return;
     // }
-
-    if (drive_state.mode == CONTROLLER_MODE_DRIVE_STRAIGHT)
-    {
-        // Set target speeds of the wheel speed controllers.
-        drive_state.left_wheel.target_speed_mps = drive_state.drive_target_speed_mps;
-        drive_state.right_wheel.target_speed_mps = drive_state.drive_target_speed_mps;
-
-        setLeftMotor(updateWheelSpeedController(&drive_state.left_wheel, measured_left_wheel_speed_mps));
-        setRightMotor(updateWheelSpeedController(&drive_state.right_wheel, measured_right_wheel_speed_mps));
-        return;
-    }
     
 }
 
-int getDriveTargetSpeedMmps(void)
+int getLeftTargetSpeedMmps(void)
 {
-    return (int)(drive_state.drive_target_speed_mps * 1000.0f);
+    return (int)(drive_state.left_wheel.target_speed_mps * 1000.0f);
 }
 
 int getLeftMotorCommandPermille(void)
 {
-    return (int)(drive_state.left_wheel.motor_command * 1000.0f);
+    return (int)(drive_state.left_wheel.adjusted_speed_mps * 1000.0f);
 }
 
 int getRightMotorCommandPermille(void)
 {
-    return (int)(drive_state.right_wheel.motor_command * 1000.0f);
+    return (int)(drive_state.right_wheel.adjusted_speed_mps * 1000.0f);
 }
 
 int isTurnInProgress(void)

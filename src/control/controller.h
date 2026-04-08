@@ -7,6 +7,7 @@ void turnLeft90(void);
 void turnRight90(void);
 void updateController(void);
 
+int getLeftTargetSpeedMmps(void);
 int getDriveTargetSpeedMmps(void);
 int getLeftMotorCommandPermille(void);
 int getRightMotorCommandPermille(void);
