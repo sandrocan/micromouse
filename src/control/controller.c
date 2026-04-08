@@ -1,344 +1,241 @@
 #include "controller.h"
 
-#include <math.h>
 #include "IOconfig.h"
 #include "motors.h"
+#include "adc.h"
 
-// Independent left/right PI gains. Keeping them separate makes it easy to tune
-// each side later without touching the controller structure.
-#define LEFT_SPEED_CONTROLLER_KP (1.6f)
-#define LEFT_SPEED_CONTROLLER_KI (18.0f)
-#define RIGHT_SPEED_CONTROLLER_KP (1.6f)
-#define RIGHT_SPEED_CONTROLLER_KI (18.0f)
+#define WHEEL_SPEED_KP (1.6f)
+#define WHEEL_SPEED_KI (18.0f)
 
-// The speed controller runs from the 10 ms timer interrupt.
-#define SPEED_CONTROLLER_SAMPLE_TIME_S (0.01f)
+// The wheel speed controller runs from the 10 ms timer interrupt.
+#define WHEEL_SPEED_SAMPLE_TIME_S (0.01f)
 
-// Wall-follow trim gains. The trim controller works on a normalized left/right
-// balance error so it still behaves well when both side sensors rise or fall
-// together while the robot is angled in the corridor.
-#define WALL_TRIM_KP (180.0f)
-#define WALL_TRIM_KI (35.0f)
-#define WALL_TRIM_MAX_MMPS (220.0f)
-
-// Small normalized balance errors are ignored so the robot does not twitch
-// while it is already close to centered between the walls.
-#define WALL_TRIM_BALANCE_DEADBAND (0.03f)
-
-// Wall following should only run while both side walls are visible.
-#define WALL_TRIM_SENSOR_PRESENT_THRESHOLD (100U)
-
-// In-place 90 degree turns use the same wheel speed on both sides with opposite
-// directions and stop once the average encoder travel reaches this count.
+// In-place 90 degree turns use equal wheel speeds in opposite directions and
+// stop once the average encoder travel reaches this count.
 #define TURN_SPEED_MMPS (500)
 #define TURN_90_TARGET_COUNTS (640)
 
-typedef enum {
+typedef enum
+{
     CONTROLLER_MODE_STOP = 0,
-    CONTROLLER_MODE_STRAIGHT,
+    CONTROLLER_MODE_DRIVE_STRAIGHT,
     CONTROLLER_MODE_TURN_LEFT_90,
     CONTROLLER_MODE_TURN_RIGHT_90
-} ControllerMode;
+} DriveMode;
 
-typedef struct {
-    float kp;
-    float ki;
-    float target_mps;
-    float integral;
-    float command;
-} SpeedPiController;
+typedef struct
+{
+    float target_speed_mps;
+    float integral_term;
+    float motor_command;
+} WheelSpeedController;
 
-typedef struct {
-    SpeedPiController left_speed;
-    SpeedPiController right_speed;
-    float base_target_mps;
-    float trim_integral_mmps;
-    float trim_output_mmps;
-    long turn_start_left_counts;
-    long turn_start_right_counts;
-    unsigned int wall_follow_enabled;
-    unsigned int wall_trim_active;
-    ControllerMode mode;
+typedef struct
+{
+    WheelSpeedController left_wheel;
+    WheelSpeedController right_wheel;
+    float drive_target_speed_mps;
+    long left_turn_start_counts;
+    long right_turn_start_counts;
+    DriveMode mode;
 } DriveControllerState;
 
-static DriveControllerState drive_controller = {
-    .left_speed = { LEFT_SPEED_CONTROLLER_KP, LEFT_SPEED_CONTROLLER_KI, 0.0f, 0.0f, 0.0f },
-    .right_speed = { RIGHT_SPEED_CONTROLLER_KP, RIGHT_SPEED_CONTROLLER_KI, 0.0f, 0.0f, 0.0f },
-    .base_target_mps = 0.0f,
-    .trim_integral_mmps = 0.0f,
-    .trim_output_mmps = 0.0f,
-    .turn_start_left_counts = 0L,
-    .turn_start_right_counts = 0L,
-    .wall_follow_enabled = 1U,
-    .wall_trim_active = 0U,
-    .mode = CONTROLLER_MODE_STOP
-};
+static DriveControllerState drive_state;
 
-static float clampUnit(float value)
+static float clampMotorCommand(float value)
 {
-    if (value > 1.0f) {
+    if (value > 1.0f)
+    {
         return 1.0f;
     }
 
-    if (value < -1.0f) {
+    if (value < -1.0f)
+    {
         return -1.0f;
     }
 
     return value;
 }
 
-static float clampSymmetric(float value, float limit)
+static long absoluteCountDelta(long value)
 {
-    if (value > limit) {
-        return limit;
-    }
-
-    if (value < -limit) {
-        return -limit;
-    }
-
-    return value;
-}
-
-static long absoluteLong(long value)
-{
-    if (value < 0L) {
+    if (value < 0L)
+    {
         return -value;
     }
 
     return value;
 }
 
-static void resetSpeedPiController(SpeedPiController *controller)
+static void resetWheelSpeedController(WheelSpeedController *controller)
 {
-    controller->integral = 0.0f;
-    controller->command = 0.0f;
+    controller->integral_term = 0.0f;
+    controller->motor_command = 0.0f;
 }
 
-static float updateSpeedPiController(SpeedPiController *controller, float measured_speed_mps)
+static float updateWheelSpeedController(WheelSpeedController *ctrl_right, WheelSpeedController *ctrl_left)
 {
-    float error = controller->target_mps - measured_speed_mps;
-    float proportional = controller->kp * error;
+    
 
-    controller->integral += controller->ki * error * SPEED_CONTROLLER_SAMPLE_TIME_S;
-    controller->command = clampUnit(proportional + controller->integral);
+    // Drive motors with same speed based on measured motor speed
+    float speed_error = controller->target_speed_mps - measured_wheel_speed_mps;
+    float proportional_term = WHEEL_SPEED_KP * speed_error;
 
-    return controller->command;
-}
+    controller->integral_term += WHEEL_SPEED_KI * speed_error * WHEEL_SPEED_SAMPLE_TIME_S;
+    controller->motor_command = clampMotorCommand(proportional_term + controller->integral_term);
 
-static void resetWallTrimState(void)
-{
-    drive_controller.trim_integral_mmps = 0.0f;
-    drive_controller.trim_output_mmps = 0.0f;
-}
+    // Adjust motor speed such that mouse stays centered based on sensor readings
+    unsigned int dist_right = getRightSensorValue();
+    unsigned int dist_left = getLeftSensorValue(); 
 
-static void deactivateWallTrim(void)
-{
-    drive_controller.wall_trim_active = 0U;
-    resetWallTrimState();
-}
+    if (dist_right < 500 || dist_left < 500)
+    {
+        return controller->motor_command;   // Case: Only single wall detected
 
-static void activateWallTrim(void)
-{
-    if (!drive_controller.wall_trim_active) {
-        resetWallTrimState();
+    }
+    else
+    {
+        int diff = dist_right - dist_left;
+        if (diff < 100 && diff > -100)
+        {
+            return controller->motor_command;
+        }
+        else if (diff < 0)
+        {
+
+        }
     }
 
-    drive_controller.wall_trim_active = 1U;
+    return controller->motor_command;
+}
+
+static void stopDriveControl(void)
+{
+    drive_state.mode = CONTROLLER_MODE_STOP;
+    drive_state.drive_target_speed_mps = 0.0f;
+    drive_state.left_wheel.target_speed_mps = 0.0f;
+    drive_state.right_wheel.target_speed_mps = 0.0f;
+    resetWheelSpeedController(&drive_state.left_wheel);
+    resetWheelSpeedController(&drive_state.right_wheel);
+    stopMotors();
 }
 
 void initController(void)
 {
-    drive_controller.base_target_mps = 0.0f;
-    drive_controller.left_speed.target_mps = 0.0f;
-    drive_controller.right_speed.target_mps = 0.0f;
-    drive_controller.turn_start_left_counts = 0L;
-    drive_controller.turn_start_right_counts = 0L;
-    drive_controller.wall_follow_enabled = 1U;
-    drive_controller.wall_trim_active = 1U;
-    drive_controller.mode = CONTROLLER_MODE_STOP;
+    drive_state.drive_target_speed_mps = 0.0f;
+    drive_state.left_wheel.target_speed_mps = 0.0f;
+    drive_state.right_wheel.target_speed_mps = 0.0f;
+    drive_state.left_turn_start_counts = 0L;
+    drive_state.right_turn_start_counts = 0L;
+    drive_state.mode = CONTROLLER_MODE_STOP;
 
-    resetSpeedPiController(&drive_controller.left_speed);
-    resetSpeedPiController(&drive_controller.right_speed);
-    resetWallTrimState();
+    resetWheelSpeedController(&drive_state.left_wheel);
+    resetWheelSpeedController(&drive_state.right_wheel);
     stopMotors();
 }
 
-void driveStraight(int speed_mmps)
+
+
+void setDriveSpeedMmps(int speed_mmps)
 {
-    setStraightSpeedMmps(speed_mmps);
+    drive_state.mode = (speed_mmps == 0) ? CONTROLLER_MODE_STOP : CONTROLLER_MODE_DRIVE_STRAIGHT;
+    drive_state.drive_target_speed_mps = ((float)speed_mmps) / 1000.0f;
 }
+
 
 void turnLeft90(void)
 {
-    drive_controller.mode = CONTROLLER_MODE_TURN_LEFT_90;
-    drive_controller.turn_start_left_counts = readLeftEncoderCounts();
-    drive_controller.turn_start_right_counts = readRightEncoderCounts();
-    resetSpeedPiController(&drive_controller.left_speed);
-    resetSpeedPiController(&drive_controller.right_speed);
-    deactivateWallTrim();
+    drive_state.mode = CONTROLLER_MODE_TURN_LEFT_90;
+    drive_state.left_turn_start_counts = readLeftEncoderCounts();
+    drive_state.right_turn_start_counts = readRightEncoderCounts();
+    resetWheelSpeedController(&drive_state.left_wheel);
+    resetWheelSpeedController(&drive_state.right_wheel);
 }
 
 void turnRight90(void)
 {
-    drive_controller.mode = CONTROLLER_MODE_TURN_RIGHT_90;
-    drive_controller.turn_start_left_counts = readLeftEncoderCounts();
-    drive_controller.turn_start_right_counts = readRightEncoderCounts();
-    resetSpeedPiController(&drive_controller.left_speed);
-    resetSpeedPiController(&drive_controller.right_speed);
-    deactivateWallTrim();
+    drive_state.mode = CONTROLLER_MODE_TURN_RIGHT_90;
+    drive_state.left_turn_start_counts = readLeftEncoderCounts();
+    drive_state.right_turn_start_counts = readRightEncoderCounts();
+    resetWheelSpeedController(&drive_state.left_wheel);
+    resetWheelSpeedController(&drive_state.right_wheel);
 }
 
-void setStraightSpeedMmps(int speed_mmps)
+void updateController(void)
 {
-    drive_controller.base_target_mps = ((float)speed_mmps) / 1000.0f;
-    drive_controller.mode =
-        (speed_mmps == 0) ? CONTROLLER_MODE_STOP : CONTROLLER_MODE_STRAIGHT;
+    float measured_left_wheel_speed_mps = readLeftMotorSpeedMps();
+    float measured_right_wheel_speed_mps = readRightMotorSpeedMps();
 
-    // When the target changes, we keep the current PI state because this is the
-    // normal operating path for step changes in desired speed.
-}
-
-void setWallFollowEnabled(int enabled)
-{
-    drive_controller.wall_follow_enabled = (enabled != 0U);
-    if (drive_controller.wall_follow_enabled) {
-        activateWallTrim();
-    } else {
-        deactivateWallTrim();
-    }
-}
-
-void updateController(float measured_left_speed_mps,
-                      float measured_right_speed_mps,
-                      unsigned int left_sensor_value,
-                      unsigned int right_sensor_value)
-{
-    float trim_mmps = 0.0f;
-    long left_turn_delta;
-    long right_turn_delta;
-    long average_turn_counts;
-
-    if (drive_controller.mode == CONTROLLER_MODE_STOP) {
-        drive_controller.left_speed.target_mps = 0.0f;
-        drive_controller.right_speed.target_mps = 0.0f;
-        resetSpeedPiController(&drive_controller.left_speed);
-        resetSpeedPiController(&drive_controller.right_speed);
-        deactivateWallTrim();
-        stopMotors();
+    if (drive_state.mode == CONTROLLER_MODE_STOP)
+    {
+        stopDriveControl();
         return;
     }
 
-    if ((drive_controller.mode == CONTROLLER_MODE_TURN_LEFT_90)
-        || (drive_controller.mode == CONTROLLER_MODE_TURN_RIGHT_90)) {
-        left_turn_delta =
-            absoluteLong(readLeftEncoderCounts() - drive_controller.turn_start_left_counts);
-        right_turn_delta =
-            absoluteLong(readRightEncoderCounts() - drive_controller.turn_start_right_counts);
-        average_turn_counts = (left_turn_delta + right_turn_delta) / 2L;
+    // if ((drive_state.mode == CONTROLLER_MODE_TURN_LEFT_90) ||
+    //     (drive_state.mode == CONTROLLER_MODE_TURN_RIGHT_90))
+    // {
+    //     left_turn_distance_counts =
+    //         absoluteCountDelta(readLeftEncoderCounts() - drive_state.left_turn_start_counts);
+    //     right_turn_distance_counts =
+    //         absoluteCountDelta(readRightEncoderCounts() - drive_state.right_turn_start_counts);
+    //     average_turn_distance_counts =
+    //         (left_turn_distance_counts + right_turn_distance_counts) / 2L;
 
-        if (average_turn_counts >= TURN_90_TARGET_COUNTS) {
-            drive_controller.mode = CONTROLLER_MODE_STOP;
-            drive_controller.base_target_mps = 0.0f;
-            drive_controller.left_speed.target_mps = 0.0f;
-            drive_controller.right_speed.target_mps = 0.0f;
-            resetSpeedPiController(&drive_controller.left_speed);
-            resetSpeedPiController(&drive_controller.right_speed);
-            deactivateWallTrim();
-            stopMotors();
-            return;
-        }
+    //     if (average_turn_distance_counts >= TURN_90_TARGET_COUNTS)
+    //     {
+    //         stopDriveControl();
+    //         return;
+    //     }
 
-        if (drive_controller.mode == CONTROLLER_MODE_TURN_LEFT_90) {
-            drive_controller.left_speed.target_mps = -((float)TURN_SPEED_MMPS / 1000.0f);
-            drive_controller.right_speed.target_mps = ((float)TURN_SPEED_MMPS / 1000.0f);
-        } else {
-            drive_controller.left_speed.target_mps = ((float)TURN_SPEED_MMPS / 1000.0f);
-            drive_controller.right_speed.target_mps = -((float)TURN_SPEED_MMPS / 1000.0f);
-        }
+    //     if (drive_state.mode == CONTROLLER_MODE_TURN_LEFT_90)
+    //     {
+    //         drive_state.left_wheel.target_speed_mps = -((float)TURN_SPEED_MMPS / 1000.0f);
+    //         drive_state.right_wheel.target_speed_mps = ((float)TURN_SPEED_MMPS / 1000.0f);
+    //     }
+    //     else
+    //     {
+    //         drive_state.left_wheel.target_speed_mps = ((float)TURN_SPEED_MMPS / 1000.0f);
+    //         drive_state.right_wheel.target_speed_mps = -((float)TURN_SPEED_MMPS / 1000.0f);
+    //     }
 
-        setLeftMotor(updateSpeedPiController(&drive_controller.left_speed, measured_left_speed_mps));
-        setRightMotor(updateSpeedPiController(&drive_controller.right_speed, measured_right_speed_mps));
+    //     setLeftMotor(updateWheelSpeedController(&drive_state.left_wheel,
+    //                                             measured_left_wheel_speed_mps));
+    //     setRightMotor(updateWheelSpeedController(&drive_state.right_wheel,
+    //                                              measured_right_wheel_speed_mps));
+    //     return;
+    // }
+
+    if (drive_state.mode == CONTROLLER_MODE_DRIVE_STRAIGHT)
+    {
+        // Set target speeds of the wheel speed controllers.
+        drive_state.left_wheel.target_speed_mps = drive_state.drive_target_speed_mps;
+        drive_state.right_wheel.target_speed_mps = drive_state.drive_target_speed_mps;
+
+        setLeftMotor(updateWheelSpeedController(&drive_state.left_wheel, measured_left_wheel_speed_mps));
+        setRightMotor(updateWheelSpeedController(&drive_state.right_wheel, measured_right_wheel_speed_mps));
         return;
     }
-
-    if (drive_controller.wall_follow_enabled) {
-        if ((left_sensor_value < WALL_TRIM_SENSOR_PRESENT_THRESHOLD)
-            || (right_sensor_value < WALL_TRIM_SENSOR_PRESENT_THRESHOLD)) {
-            deactivateWallTrim();
-        } else {
-            activateWallTrim();
-        }
-
-        if (drive_controller.wall_trim_active) {
-            float sensor_sum = (float)left_sensor_value + (float)right_sensor_value;
-            float wall_error;
-            float proportional_trim_mmps;
-
-            if (sensor_sum <= 0.0f) {
-                wall_error = 0.0f;
-            } else {
-                // Positive error means the right wall looks farther away than the
-                // left wall, so the robot should steer right. Dividing by the
-                // sensor sum turns the raw difference into a corridor-balance
-                // error instead of a distance-dependent value.
-                wall_error =
-                    ((float)right_sensor_value - (float)left_sensor_value) / sensor_sum;
-            }
-
-            if (fabsf(wall_error) <= WALL_TRIM_BALANCE_DEADBAND) {
-                wall_error = 0.0f;
-            }
-
-            proportional_trim_mmps = WALL_TRIM_KP * wall_error;
-            drive_controller.trim_integral_mmps +=
-                WALL_TRIM_KI * wall_error * SPEED_CONTROLLER_SAMPLE_TIME_S;
-            trim_mmps = proportional_trim_mmps + drive_controller.trim_integral_mmps;
-            drive_controller.trim_output_mmps =
-                clampSymmetric(trim_mmps, WALL_TRIM_MAX_MMPS);
-        } else {
-            resetWallTrimState();
-        }
-    } else {
-        deactivateWallTrim();
-    }
-
-    drive_controller.left_speed.target_mps =
-        drive_controller.base_target_mps - (drive_controller.trim_output_mmps / 1000.0f);
-    drive_controller.right_speed.target_mps =
-        drive_controller.base_target_mps + (drive_controller.trim_output_mmps / 1000.0f);
-
-    setLeftMotor(updateSpeedPiController(&drive_controller.left_speed, measured_left_speed_mps));
-    setRightMotor(updateSpeedPiController(&drive_controller.right_speed, measured_right_speed_mps));
+    
 }
 
-int getControllerTargetMmps(void)
+int getDriveTargetSpeedMmps(void)
 {
-    return (int)(drive_controller.base_target_mps * 1000.0f);
+    return (int)(drive_state.drive_target_speed_mps * 1000.0f);
 }
 
-int getControllerTrimMmps(void)
+int getLeftMotorCommandPermille(void)
 {
-    return (int)(drive_controller.trim_output_mmps);
+    return (int)(drive_state.left_wheel.motor_command * 1000.0f);
 }
 
-int getControllerLeftCommandPermille(void)
+int getRightMotorCommandPermille(void)
 {
-    return (int)(drive_controller.left_speed.command * 1000.0f);
+    return (int)(drive_state.right_wheel.motor_command * 1000.0f);
 }
 
-int getControllerRightCommandPermille(void)
+int isTurnInProgress(void)
 {
-    return (int)(drive_controller.right_speed.command * 1000.0f);
-}
-
-int isWallFollowTrimActive(void)
-{
-    return (int)drive_controller.wall_trim_active;
-}
-
-int isControllerTurning(void)
-{
-    return (drive_controller.mode == CONTROLLER_MODE_TURN_LEFT_90)
-        || (drive_controller.mode == CONTROLLER_MODE_TURN_RIGHT_90);
+    return (drive_state.mode == CONTROLLER_MODE_TURN_LEFT_90) ||
+           (drive_state.mode == CONTROLLER_MODE_TURN_RIGHT_90);
 }

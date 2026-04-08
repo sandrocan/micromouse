@@ -160,23 +160,21 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
     right_speed_mps = readRightMotorSpeedMps();
     left_sensor_value = readLeftSensorValue();
     right_sensor_value = readRightSensorValue();
-    updateController(left_speed_mps, right_speed_mps, left_sensor_value, right_sensor_value);
+    updateController();
 
     cnt++;
 
     if (cnt >= 10) {
         cnt = 0;
         snprintf(uart_buffer, sizeof(uart_buffer),
-                 "left=%d right=%d target=%d trim=%d active=%d ls=%u rs=%u lcmd=%d rcmd=%d\r\n",
+                 "left=%d right=%d target=%d ls=%u rs=%u lcmd=%d rcmd=%d\r\n",
                  (int)(left_speed_mps * 1000.0f),
                  (int)(right_speed_mps * 1000.0f),
-                 getControllerTargetMmps(),
-                 getControllerTrimMmps(),
-                 isWallFollowTrimActive(),
+                 getDriveTargetSpeedMmps(),
                  left_sensor_value,
                  right_sensor_value,
-                 getControllerLeftCommandPermille(),
-                 getControllerRightCommandPermille());
+                 getLeftMotorCommandPermille(),
+                 getRightMotorCommandPermille());
         writeUART(uart_buffer);
     }
 }

@@ -52,12 +52,9 @@
 #include "motors.h"
 #include "selfdestruct.h"
 #include "controller.h"
-#include "tests.h"
 
 
 int main() {
-  unsigned int turn_trigger_armed = 1U;
-
   ///Internal Fcycle = 80 MHz
   // 16MHz Oscillator
   // /2 (PLLPRE)
@@ -88,37 +85,13 @@ int main() {
   startADC1();
   initDMA();
   initSelfDestructInterrupt();
-  initButtonLedIndicator();
+
   initController();
-  driveStraight(0);
   startTimer1();
   startTimer2();
 
-  while(1) {
-    unsigned int mid_sensor_value;
+  while (1) {
 
-    updateButtonLedIndicator();
-    if (isButtonLedDriveEnabled()) {
-      mid_sensor_value = readMidSensorValue();
-
-      if (isControllerTurning()) {
-        turn_trigger_armed = 0U;
-      } else {
-        if (mid_sensor_value <= 1000U) {
-          turn_trigger_armed = 1U;
-          driveStraight(500);
-        } else if (turn_trigger_armed) {
-          driveStraight(0);
-          turnLeft90();
-          turn_trigger_armed = 0U;
-        } else {
-          driveStraight(500);
-        }
-      }
-    } else {
-      driveStraight(0);
-      turn_trigger_armed = 1U;
-    }
   }
 
   return 0;
