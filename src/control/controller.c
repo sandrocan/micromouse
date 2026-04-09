@@ -233,6 +233,11 @@ void updateController(void)
             getLeftMotorCommandPermille(),
             getRightMotorCommandPermille());
         writeUART(uart_buffer);
+        snprintf(uart_buffer, sizeof(uart_buffer),
+            "Distance since start: %.3f, Rotations since start: %.3f",
+            getLeftDistanceMeters(),
+            getLeftRotations());
+        writeUART(uart_buffer);
     }
         
 

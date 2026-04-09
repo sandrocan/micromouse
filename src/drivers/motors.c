@@ -250,6 +250,34 @@ void stopMotors(void)
     refreshMotorOutputs();
 }
 
+float getLeftDistanceMeters(void)
+{
+    long counts = readLeftEncoderCounts();
+    float wheel_circumference_m = 3.14159265f * WHEEL_DIAMETER_M;
+
+    return ((float)counts / ENCODER_COUNTS_PER_WHEEL_REV) * wheel_circumference_m;
+}
+float getRightDistanceMeters(void)
+{
+    long counts = readRightEncoderCounts();
+    float wheel_circumference_m = 3.14159265f * WHEEL_DIAMETER_M;
+
+    return ((float)counts / ENCODER_COUNTS_PER_WHEEL_REV) * wheel_circumference_m;
+}
+
+
+float getLeftRotations(void)
+{
+    long counts = readLeftEncoderCounts();
+    return (float)counts / ENCODER_COUNTS_PER_WHEEL_REV;
+}
+
+float getRightRotations(void)
+{
+    long counts = readRightEncoderCounts();
+    return (float)counts / ENCODER_COUNTS_PER_WHEEL_REV;
+}
+
 void __attribute__((__interrupt__, auto_psv)) _QEI1Interrupt(void)
 {
     IFS3bits.QEI1IF = 0;
