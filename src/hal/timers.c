@@ -175,7 +175,7 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
                  right_sensor_value,
                  getLeftMotorCommandPermille(),
                  getRightMotorCommandPermille());
-        writeUART(uart_buffer);
+        //writeUART(uart_buffer);
     }
 }
 
