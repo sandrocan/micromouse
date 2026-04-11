@@ -43,7 +43,7 @@ void __attribute__((__interrupt__, auto_psv)) _CNInterrupt(void)
         started = !started;
 
         if (started) {
-            setDriveSpeedMmps(300);
+            setDriveSpeedMmps(600);
         } else {
             setDriveSpeedMmps(0);
         }

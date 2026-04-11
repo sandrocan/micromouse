@@ -29,10 +29,10 @@
 #define TURN_90_TARGET_COUNTS (780)
 
 //wheel speed during the turn
-#define TURN_SPEED (0.1f)
+#define TURN_SPEED (0.3f)
 
 //front sensor reading of when to start the turn
-#define TURN_DISTANCE (1300)
+#define TURN_DISTANCE (1100)
 
 typedef enum
 {
