@@ -18,7 +18,7 @@
 //target distance from wall
 #define TARGET_DISTANCE (1130)
 
-//max sensor reading for a wall to be considered next to mouse
+//min sensor reading for a wall to be considered next to mouse
 #define WALL_MIN_DISTANCE (800)
 
 // The wheel speed controller runs from the 10 ms timer interrupt.
@@ -118,12 +118,17 @@ void setDriveSpeedMmps(int speed_mmps)
 
 bool isWallLeft(void)
 {
-    return (readLeftSensorValue() > 1000);
+    return (readLeftSensorValue() > WALL_MIN_DISTANCE);
 }
 
 bool isWallRight(void)
 {
-    return (readRightSensorValue() > 1000);
+    return (readRightSensorValue() > WALL_MIN_DISTANCE);
+}
+
+bool isWallFront(void)
+{
+    return (readMidSensorValue() > WALL_MIN_DISTANCE);
 }
 
 
@@ -161,6 +166,7 @@ static void updateWheelSpeedController(WheelSpeedController *controller, float m
         //if the sensor reading is valid (a wall is next to sensor)
         //adjust the speed based on distance to wall
         float distance_error = distance - TARGET_DISTANCE;
+        //clamp distance error to [-100,100]
         if (distance_error > 100.0f) distance_error = 100.0f;
         else if (distance_error < -100.0f) distance_error = -100.0f;
 
@@ -299,3 +305,8 @@ int isTurnInProgress(void)
            (drive_state.mode == CONTROLLER_MODE_TURN_RIGHT_90);
 }
 
+//returns pointer to the internal drive state, which can be read and modified
+DriveControllerState* getDriveStatePtr(void)
+{
+    return &drive_state;
+}
