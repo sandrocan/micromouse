@@ -9,54 +9,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define WHEEL_SPEED_KP (1.6f)
-#define WHEEL_SPEED_KI (18.0f)
-
-//used to adjust the speed of the motors when mouse is not in the middle
-#define TRIM_ADJUST_KP (0.005f)
-
-//target distance from wall
-#define TARGET_DISTANCE (1130)
-
-//min sensor reading for a wall to be considered next to mouse
-#define WALL_MIN_DISTANCE (800)
-
-// The wheel speed controller runs from the 10 ms timer interrupt.
-#define WHEEL_SPEED_SAMPLE_TIME_S (0.01f)
-
-// In-place 90 degree turns use equal wheel speeds in opposite directions and
-// stop once the average encoder travel reaches this count.
-#define TURN_90_TARGET_COUNTS (780)
-
-//wheel speed during the turn
-#define TURN_SPEED (0.3f)
-
-//front sensor reading of when to start the turn
-#define TURN_DISTANCE (1100)
-
-typedef enum
-{
-    CONTROLLER_MODE_STOP = 0,
-    CONTROLLER_MODE_DRIVE_STRAIGHT,
-    CONTROLLER_MODE_TURN_LEFT_90,
-    CONTROLLER_MODE_TURN_RIGHT_90
-} DriveMode;
-
-typedef struct
-{
-    float target_speed_mps;
-    float integral_term_straight;
-    float adjusted_speed_mps;
-} WheelSpeedController;
-
-typedef struct
-{
-    WheelSpeedController left_wheel;
-    WheelSpeedController right_wheel;
-    long left_turn_start_counts;
-    long right_turn_start_counts;
-    DriveMode mode;
-} DriveControllerState;
 
 static DriveControllerState drive_state;
 
@@ -150,6 +102,15 @@ void turnRight90(void)
     drive_state.mode = CONTROLLER_MODE_TURN_RIGHT_90;
 }
 
+void turn180(void) 
+{
+    drive_state.left_turn_start_counts = readLeftEncoderCounts();
+    drive_state.right_turn_start_counts = readRightEncoderCounts();
+    resetWheelSpeedController(&drive_state.left_wheel);
+    resetWheelSpeedController(&drive_state.right_wheel);
+    drive_state.mode = CONTROLLER_MODE_TURN_180;
+}
+
 static void updateWheelSpeedController(WheelSpeedController *controller, float measured_speed, float distance)
 {
     float speed_error = controller->target_speed_mps - measured_speed;    
@@ -187,7 +148,8 @@ static void updateTurnController(void)
     // Use average of both wheels to be robust against one wheel slipping
     long counts_turned = (labs(left_counts) + labs(right_counts)) / 2;
 
-    if (counts_turned >= TURN_90_TARGET_COUNTS)
+    if ((counts_turned >= TURN_90_TARGET_COUNTS && (drive_state.mode == CONTROLLER_MODE_TURN_LEFT_90 || drive_state.mode == CONTROLLER_MODE_TURN_RIGHT_90)) 
+        || counts_turned >= TURN_180_TARGET_COUNTS && drive_state.mode == CONTROLLER_MODE_TURN_180 )
     {
         // Turn complete — resume straight driving
         setLeftMotor(0.0f); //stop motors
@@ -200,7 +162,7 @@ static void updateTurnController(void)
         return;
     }
 
-    if (drive_state.mode == CONTROLLER_MODE_TURN_RIGHT_90)
+    if (drive_state.mode == CONTROLLER_MODE_TURN_RIGHT_90 || drive_state.mode == CONTROLLER_MODE_TURN_180)
     {
         // Left wheel forward, right wheel backward
         setLeftMotor(TURN_SPEED);
@@ -255,7 +217,11 @@ void updateController(void)
 
     if (dist_mid > TURN_DISTANCE && drive_state.mode == CONTROLLER_MODE_DRIVE_STRAIGHT)
     {
-        if (isWallLeft())
+        if (isWallLeft() && isWallRight())
+        {
+            turn180();
+        }
+        else if (isWallLeft())
         {
             turnRight90();
         }
@@ -266,7 +232,8 @@ void updateController(void)
     }
 
     if (drive_state.mode == CONTROLLER_MODE_TURN_RIGHT_90 ||
-        drive_state.mode == CONTROLLER_MODE_TURN_LEFT_90)
+        drive_state.mode == CONTROLLER_MODE_TURN_LEFT_90 || 
+        drive_state.mode == CONTROLLER_MODE_TURN_180) 
     {
         updateTurnController();
         return;
