@@ -152,7 +152,7 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
 
     if (isStarted())
     {
-        floodfill_estimate_cell_center(getMouseState());
+        floodfill_estimate_cell_center();
     }
     updateController();
 }

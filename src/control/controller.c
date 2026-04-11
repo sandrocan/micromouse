@@ -108,8 +108,8 @@ void turn180(void)
 
 void driveStraight(void)
 {
-    resetWheelSpeedController(&drive_state.left_wheel);
-    resetWheelSpeedController(&drive_state.right_wheel);
+    //resetWheelSpeedController(&drive_state.left_wheel);
+    //resetWheelSpeedController(&drive_state.right_wheel);
     drive_state.mode = CONTROLLER_MODE_DRIVE_STRAIGHT;
 }
 
@@ -247,8 +247,22 @@ void updateController(void)
 
     if (drive_state.mode == CONTROLLER_MODE_DRIVE_STRAIGHT)
     {
+        
         updateWheelSpeedController(&drive_state.left_wheel, measured_left_wheel_speed_mps, dist_left);
         updateWheelSpeedController(&drive_state.right_wheel, measured_right_wheel_speed_mps, dist_right);
+        
+        static int drive_cnt = 0;
+        drive_cnt++;
+        if (drive_cnt >= 10)
+        {
+            char uart_buffer[96];
+            snprintf(uart_buffer,sizeof(uart_buffer),
+                "speed left: %.3f, speed right: %.3f",
+                drive_state.left_wheel.adjusted_speed_mps,
+                drive_state.right_wheel.adjusted_speed_mps
+            );
+            writeUART(uart_buffer);
+        }
 
         setLeftMotor(drive_state.left_wheel.adjusted_speed_mps);
         setRightMotor(drive_state.right_wheel.adjusted_speed_mps);

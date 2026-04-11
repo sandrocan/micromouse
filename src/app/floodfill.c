@@ -14,7 +14,7 @@ Pos pos_make(uint8_t x, uint8_t y)
 }
 
 // Initialize mouse start state
-void floodfill_init()
+void floodfill_init(void)
 {
     state->pos.x = START_X;
     state->pos.y = START_Y;
@@ -45,7 +45,7 @@ void floodfill_init()
 }
 
 // Decides where to go next
-void floodfill_step()
+void floodfill_step(void)
 {
     if (!state->step_ready)
     {
@@ -56,7 +56,6 @@ void floodfill_step()
     writeUART("STEP\n");
 
     stopDriveControl();
-    Pos pos = state->pos;
 
     // Update mouse position and maze
     if (queue_pop(&state->queue, &state->pos))
@@ -95,30 +94,40 @@ void floodfill_step()
         writeUART("NO WALL FRONT\n");
     }
 
+    char buf[64];
+    snprintf(buf, sizeof(buf), "Queue head= X=%d Y= %d\n", state->queue.data[state->queue.head].x, state->queue.data[state->queue.head].y);
+    writeUART(buf);
+
     Path path = floodfill_get_path_to_pos(state->queue.data[state->queue.head]);
 
     LocalDirection turn_dir = get_turn_direction(state->dir, path.directions[0]);
 
     if (turn_dir == RIGHT)
     {
+        writeUART("Turning Right\n");
         turnRight90();
     }
     else if (turn_dir == LEFT)
     {
+        writeUART("Turning Left\n");
         turnLeft90();
     }
     else if (turn_dir == REAR)
     {
+        writeUART("Turning 180\n");
         turn180();
+    }
+    else {
+        reset_state_dist();
     }
 
     state->dir = next_dir;
-    state->step_ready = true;
+    writeUART("Driving straight\n");
     driveStraight();
 }
 
 // Try to estimate if the mouse has reached the center of a cell
-void floodfill_estimate_cell_center()
+void floodfill_estimate_cell_center(void)
 {
     float total_dist = getLeftDistanceMeters() * 1000.0f;
 
@@ -128,16 +137,18 @@ void floodfill_estimate_cell_center()
 
     unsigned int mid_dist = readMidSensorValue();
     // Robot reached estimated cell center (via sensor reading)
-    if (mid_dist < 1300 && mid_dist > 1100) // exact 42.5mm
+    if (mid_dist < 1300 && mid_dist > 1100 && getDriveStatePtr()->mode == CONTROLLER_MODE_DRIVE_STRAIGHT) 
     {
-        floodfill_step(state);
+        writeUART("MIDDLE BY SENSOR\n");
+        floodfill_step();
         return;
     }
 
     // Robot reached estimated cell center (via distance estimation)
     if (state->dist >= CELL_SIZE_MM)
     {
-        floodfill_step(state);
+        writeUART("MIDDLE BY DISTANCE\n");
+        floodfill_step();
         return;
     }
 }
@@ -368,7 +379,7 @@ LocalDirection get_turn_direction(GlobalDirection current_dir, GlobalDirection n
     return LEFT;
 }
 
-void reset_state_dist()
+void reset_state_dist(void)
 {
     state->dist = 0;
     state->step_ready = true;

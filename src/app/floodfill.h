@@ -70,9 +70,9 @@ typedef struct
 
 volatile MouseState *getMouseState(void);
 Pos pos_make(uint8_t x, uint8_t y);
-void floodfill_init();
-void floodfill_step();
-void floodfill_estimate_cell_center();
+void floodfill_init(void);
+void floodfill_step(void);
+void floodfill_estimate_cell_center(void);
 GlobalDirection floodfill_set_neighbor(LocalDirection no_wall);
 bool floodfill_set_queue(GlobalDirection dir);
 Path floodfill_get_path_to_pos(Pos new_pos);
