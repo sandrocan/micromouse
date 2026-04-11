@@ -19,7 +19,7 @@ void floodfill_init()
     state->pos.x = START_X;
     state->pos.y = START_Y;
     state->dist = 0;
-    state->moving = true;
+    state->step_ready = true;
     state->total_dist_prev = 0;
     state->dir = START_DIR;
     queue_init(&state->queue);
@@ -47,8 +47,15 @@ void floodfill_init()
 // Decides where to go next
 void floodfill_step()
 {
-    stopDriveControl();
+    if (!state->step_ready)
+    {
+        return;
+    }
+    state->step_ready = false;
 
+    writeUART("STEP\n");
+
+    stopDriveControl();
     Pos pos = state->pos;
 
     // Update mouse position and maze
@@ -56,12 +63,7 @@ void floodfill_step()
     {
         // Position is here already updated
         state->maze[state->pos.x][state->pos.y].explored = true;
-        uint8_t old_dist_to_start = state->maze[pos.x][pos.y].dist_to_start + 1;
-
-        if (state->maze[state->pos.x][state->pos.y].dist_to_start > old_dist_to_start)
-        {
-            state->maze[state->pos.x][state->pos.y].dist_to_start = old_dist_to_start;
-        }
+        writeUART("POS updated\n");
     }
     else
     {
@@ -76,18 +78,21 @@ void floodfill_step()
     {
         next_dir = floodfill_set_neighbor(LEFT);
         floodfill_set_queue(next_dir);
+        writeUART("NO WALL LEFT\n");
     }
 
     if (!isWallRight())
     {
         next_dir = floodfill_set_neighbor(RIGHT);
         floodfill_set_queue(next_dir);
+        writeUART("NO WALL RIGHT\n");
     }
 
     if (!isWallFront())
     {
         next_dir = floodfill_set_neighbor(FRONT);
         floodfill_set_queue(next_dir);
+        writeUART("NO WALL FRONT\n");
     }
 
     Path path = floodfill_get_path_to_pos(state->queue.data[state->queue.head]);
@@ -107,7 +112,9 @@ void floodfill_step()
         turn180();
     }
 
-    state->dist = 0;
+    state->dir = next_dir;
+    state->step_ready = true;
+    driveStraight();
 }
 
 // Try to estimate if the mouse has reached the center of a cell
@@ -242,19 +249,19 @@ bool floodfill_set_queue(GlobalDirection free_dir)
 
     if (free_dir == NORTH)
     {
-        new_pos = pos_make(state->pos.x, ++state->pos.y);
+        new_pos = pos_make(state->pos.x, state->pos.y + 1);
     }
     else if (free_dir == EAST)
     {
-        new_pos = pos_make(++state->pos.x, state->pos.y);
+        new_pos = pos_make(state->pos.x + 1, state->pos.y);
     }
     else if (free_dir == SOUTH)
     {
-        new_pos = pos_make(state->pos.x, --state->pos.y);
+        new_pos = pos_make(state->pos.x, state->pos.y - 1);
     }
     else
     {
-        new_pos = pos_make(--state->pos.x, state->pos.y);
+        new_pos = pos_make(state->pos.x - 1, state->pos.y);
     }
 
     // Only add new position to queue if it is not explored
@@ -364,4 +371,5 @@ LocalDirection get_turn_direction(GlobalDirection current_dir, GlobalDirection n
 void reset_state_dist()
 {
     state->dist = 0;
+    state->step_ready = true;
 }

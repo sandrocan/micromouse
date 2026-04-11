@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "floodfill.h"
+#include "selfdestruct.h"
 
 static void updateLEDGreenSine(void)
 {
@@ -149,7 +150,10 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
     IFS0bits.T1IF = 0; // reset Timer 1 interrupt flag
     // updateLEDGreenSine();
 
-    floodfill_estimate_cell_center(getMouseState());
+    if (isStarted())
+    {
+        floodfill_estimate_cell_center(getMouseState());
+    }
     updateController();
 }
 

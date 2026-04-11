@@ -12,7 +12,8 @@ static void debounceDelay(void)
 {
     volatile unsigned int i;
 
-    for (i = 0; i < SELFDESTRUCT_DEBOUNCE_DELAY_CYCLES; i++) {
+    for (i = 0; i < SELFDESTRUCT_DEBOUNCE_DELAY_CYCLES; i++)
+    {
     }
 }
 
@@ -39,16 +40,25 @@ void __attribute__((__interrupt__, auto_psv)) _CNInterrupt(void)
     debounceDelay();
     button_pressed = SELFDESTRUCT;
 
-    if (button_pressed) {
+    if (button_pressed)
+    {
         started = !started;
 
-        if (started) {
+        if (started)
+        {
             setDriveSpeedMmps(600);
-        } else {
+        }
+        else
+        {
             setDriveSpeedMmps(0);
         }
     }
 
     (void)PORTB;
     IFS1bits.CNIF = 0;
+}
+
+bool isStarted(void)
+{
+    return started;
 }

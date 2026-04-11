@@ -7,6 +7,7 @@
 #include "controller.h"
 #include "motors.h"
 #include "adc.h"
+#include "uart.h"
 #include "queue.h"
 
 #define MAZE_SIZE 6
@@ -48,7 +49,7 @@ typedef struct
     Pos pos;
     float dist; // Distance since last cell-mid-point
     Cell maze[MAZE_SIZE][MAZE_SIZE];
-    bool moving;
+    bool step_ready;
     float total_dist_prev;
     GlobalDirection dir;
     volatile PosQueue queue;

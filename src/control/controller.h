@@ -65,6 +65,7 @@ bool isWallFront(void);
 void turnLeft90(void);
 void turnRight90(void);
 void turn180(void);
+void driveStraight(void);
 void updateController(void);
 
 int getLeftTargetSpeedMmps(void);

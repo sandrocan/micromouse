@@ -106,6 +106,13 @@ void turn180(void)
     drive_state.mode = CONTROLLER_MODE_TURN_180;
 }
 
+void driveStraight(void)
+{
+    resetWheelSpeedController(&drive_state.left_wheel);
+    resetWheelSpeedController(&drive_state.right_wheel);
+    drive_state.mode = CONTROLLER_MODE_DRIVE_STRAIGHT;
+}
+
 static void updateWheelSpeedController(WheelSpeedController *controller, float measured_speed, float distance)
 {
     float speed_error = controller->target_speed_mps - measured_speed;
@@ -156,7 +163,7 @@ static void updateTurnController(void)
         setLeftMotor(1.0f); // give motors a short forward momentum to reduce vibrations
         setRightMotor(1.0f);
         reset_state_dist();
-        drive_state.mode = CONTROLLER_MODE_DRIVE_STRAIGHT;
+        // drive_state.mode = CONTROLLER_MODE_DRIVE_STRAIGHT;
         return;
     }
 
@@ -199,12 +206,12 @@ void updateController(void)
                  dist_mid,
                  getLeftMotorCommandPermille(),
                  getRightMotorCommandPermille());
-        writeUART(uart_buffer);
+        // writeUART(uart_buffer);
         snprintf(uart_buffer, sizeof(uart_buffer),
                  "Distance since start: %.3f, Rotations since start: %.3f",
                  getLeftDistanceMeters(),
                  getLeftRotations());
-        writeUART(uart_buffer);
+        // writeUART(uart_buffer);
     }
 
     if (drive_state.mode == CONTROLLER_MODE_STOP)
