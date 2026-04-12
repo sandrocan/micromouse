@@ -27,9 +27,33 @@ static float clampMotorCommand(float value)
     return value;
 }
 
+static float applyLowPass(float previous_value, float new_value, float alpha)
+{
+    return previous_value + alpha * (new_value - previous_value);
+}
+
+static float slewToward(float current_value, float target_value, float max_step)
+{
+    float delta = target_value - current_value;
+
+    if (delta > max_step)
+    {
+        return current_value + max_step;
+    }
+
+    if (delta < -max_step)
+    {
+        return current_value - max_step;
+    }
+
+    return target_value;
+}
+
 static void resetWheelSpeedController(WheelSpeedController *controller)
 {
     controller->integral_term_straight = 0.0f;
+    controller->filtered_speed_mps = 0.0f;
+    controller->filtered_trim_command = 0.0f;
     controller->adjusted_speed_mps = 0.0f;
 }
 
@@ -40,7 +64,8 @@ void stopDriveControl(void)
     drive_state.right_wheel.target_speed_mps = 0.0f;
     resetWheelSpeedController(&drive_state.left_wheel);
     resetWheelSpeedController(&drive_state.right_wheel);
-    stopMotors();
+    brakeMotors();
+    writeUART("STOP driving\n");
 }
 
 void initController(void)
@@ -108,14 +133,21 @@ void turn180(void)
 
 void driveStraight(void)
 {
-    //resetWheelSpeedController(&drive_state.left_wheel);
-    //resetWheelSpeedController(&drive_state.right_wheel);
-    drive_state.mode = CONTROLLER_MODE_DRIVE_STRAIGHT;
+    resetWheelSpeedController(&drive_state.left_wheel);
+    resetWheelSpeedController(&drive_state.right_wheel);
+    setDriveSpeedMmps(DEFAULT_DRIVE_SPEED_MMPS);
 }
 
 static void updateWheelSpeedController(WheelSpeedController *controller, float measured_speed, float distance)
 {
-    float speed_error = controller->target_speed_mps - measured_speed;
+    float requested_trim = 0.0f;
+    float output;
+
+    controller->filtered_speed_mps = applyLowPass(controller->filtered_speed_mps,
+                                                  measured_speed,
+                                                  WHEEL_SPEED_FILTER_ALPHA);
+
+    float speed_error = controller->target_speed_mps - controller->filtered_speed_mps;
     controller->integral_term_straight += WHEEL_SPEED_KI * speed_error * WHEEL_SPEED_SAMPLE_TIME_S;
 
     // Clamp integral to prevent windup
@@ -124,7 +156,7 @@ static void updateWheelSpeedController(WheelSpeedController *controller, float m
     if (controller->integral_term_straight < -0.5f)
         controller->integral_term_straight = -0.5f;
 
-    float output = WHEEL_SPEED_KP * speed_error + controller->integral_term_straight;
+    output = WHEEL_SPEED_KP * speed_error + controller->integral_term_straight;
 
     if (distance > WALL_MIN_DISTANCE)
     {
@@ -138,11 +170,18 @@ static void updateWheelSpeedController(WheelSpeedController *controller, float m
             distance_error = -100.0f;
 
         // Trim is P-only, no integrator
-        float trim = TRIM_ADJUST_KP * distance_error;
-        output += trim;
+        requested_trim = TRIM_ADJUST_KP * distance_error;
     }
 
-    controller->adjusted_speed_mps = clampMotorCommand(output);
+    controller->filtered_trim_command = applyLowPass(controller->filtered_trim_command,
+                                                     requested_trim,
+                                                     WALL_TRIM_FILTER_ALPHA);
+
+    output += controller->filtered_trim_command;
+    output = clampMotorCommand(output);
+    controller->adjusted_speed_mps = slewToward(controller->adjusted_speed_mps,
+                                                output,
+                                                DRIVE_COMMAND_SLEW_PER_SAMPLE);
 }
 
 static void updateTurnController(void)
@@ -163,7 +202,7 @@ static void updateTurnController(void)
         setLeftMotor(1.0f); // give motors a short forward momentum to reduce vibrations
         setRightMotor(1.0f);
         reset_state_dist();
-        // drive_state.mode = CONTROLLER_MODE_DRIVE_STRAIGHT;
+        driveStraight();
         return;
     }
 
@@ -216,7 +255,7 @@ void updateController(void)
 
     if (drive_state.mode == CONTROLLER_MODE_STOP)
     {
-        stopDriveControl();
+        // stopDriveControl();
         return;
     }
 
@@ -247,21 +286,21 @@ void updateController(void)
 
     if (drive_state.mode == CONTROLLER_MODE_DRIVE_STRAIGHT)
     {
-        
+
         updateWheelSpeedController(&drive_state.left_wheel, measured_left_wheel_speed_mps, dist_left);
         updateWheelSpeedController(&drive_state.right_wheel, measured_right_wheel_speed_mps, dist_right);
-        
+
         static int drive_cnt = 0;
         drive_cnt++;
         if (drive_cnt >= 10)
         {
+            drive_cnt = 0;
             char uart_buffer[96];
-            snprintf(uart_buffer,sizeof(uart_buffer),
-                "speed left: %.3f, speed right: %.3f",
-                drive_state.left_wheel.adjusted_speed_mps,
-                drive_state.right_wheel.adjusted_speed_mps
-            );
-            writeUART(uart_buffer);
+            snprintf(uart_buffer, sizeof(uart_buffer),
+                     "speed left: %.3f, speed right: %.3f\n",
+                     drive_state.left_wheel.adjusted_speed_mps,
+                     drive_state.right_wheel.adjusted_speed_mps);
+            // writeUART(uart_buffer);
         }
 
         setLeftMotor(drive_state.left_wheel.adjusted_speed_mps);

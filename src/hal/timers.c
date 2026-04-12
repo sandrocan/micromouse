@@ -148,12 +148,16 @@ void startTimer2(void)
 void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
 {
     IFS0bits.T1IF = 0; // reset Timer 1 interrupt flag
-    // updateLEDGreenSine();
 
     if (isStarted())
     {
         floodfill_estimate_cell_center();
     }
+
+    // unsigned val = readMidSensorValue();
+    // char buf[16];
+    // snprintf(buf, sizeof(buf), "Sensor = %d\n", val);
+    // writeUART(buf);
     updateController();
 }
 
@@ -164,7 +168,7 @@ void __attribute__((__interrupt__, auto_psv)) _T2Interrupt(void)
     // Blaulicht: toggle RB10/RB11 (complementary) at ~3 Hz
     static int blaulicht_cnt = 0;
     blaulicht_cnt++;
-    if (blaulicht_cnt >= 8)
+    if (blaulicht_cnt >= 15)
     { // 17 * 10ms = 170ms -> ~3 Hz
         blaulicht_cnt = 0;
         if (P1DC3 == 0)

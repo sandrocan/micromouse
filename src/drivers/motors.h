@@ -15,6 +15,7 @@ int isMotorStopLatched(void);
 void setLeftMotor(float speed);
 void setRightMotor(float speed);
 void stopMotors(void);
+void brakeMotors(void);
 float getLeftDistanceMeters(void);
 float getRightDistanceMeters(void);
 float getLeftRotations(void);

@@ -1,14 +1,14 @@
 #include "floodfill.h"
 
-static volatile MouseState m;
-static volatile MouseState *state = &m;
+static volatile MouseState state;
+static volatile MouseState *state_ptr = &state;
 
 volatile MouseState *getMouseState(void)
 {
-    return state;
+    return state_ptr;
 }
 
-Pos pos_make(uint8_t x, uint8_t y)
+Pos make_pos(uint8_t x, uint8_t y)
 {
     return (Pos){.x = x, .y = y};
 }
@@ -16,58 +16,76 @@ Pos pos_make(uint8_t x, uint8_t y)
 // Initialize mouse start state
 void floodfill_init(void)
 {
-    state->pos.x = START_X;
-    state->pos.y = START_Y;
-    state->dist = 0;
-    state->step_ready = true;
-    state->total_dist_prev = 0;
-    state->dir = START_DIR;
-    queue_init(&state->queue);
-    queue_push(&state->queue, pos_make(0u, 1u)); // Add cell (0,1) to queue
+    state.pos.x = START_X;
+    state.pos.y = START_Y;
+    state.dist = 0;
+    state.step_ready = true;
+    state.driving_to_goal = false;
+    state.step_idx = 0;
+    state.total_dist_prev = 0;
+    state.dir = START_DIR;
+    queue_init(&state.queue);
+    queue_push(&state.queue, make_pos(0u, 1u)); // Add cell (0,1) to queue
 
     // Init maze
     for (uint8_t x = 0; x < MAZE_SIZE; x++)
     {
         for (uint8_t y = 0; y < MAZE_SIZE; y++)
         {
-            state->maze[x][y].neighbors = 0;
-            state->maze[x][y].dist_to_start = 255;
-            state->maze[x][y].dist_to_goal = 255;
-            state->maze[x][y].explored = false;
+            state.maze[x][y].neighbors = 0;
+            state.maze[x][y].dist_to_start = 255;
+            state.maze[x][y].dist_to_goal = 255;
+            state.maze[x][y].explored = false;
+            state.maze[x][y].searched = false;
         }
     }
 
     // Start cell
-    state->maze[START_X][START_Y].explored = true;
+    state.maze[START_X][START_Y].explored = true;
     // Start cell has free way to cell above
-    state->maze[START_X][START_Y].neighbors |= NORTH;
-    state->maze[START_X][START_Y].dist_to_goal = 0;
+    state.maze[START_X][START_Y].neighbors |= NORTH;
+    state.maze[START_X][START_Y].dist_to_goal = 0;
 }
 
 // Decides where to go next
 void floodfill_step(void)
 {
-    if (!state->step_ready)
+    if (!state.step_ready)
     {
         return;
     }
-    state->step_ready = false;
+    state.step_ready = false;
 
-    writeUART("STEP\n");
-
-    stopDriveControl();
+    writeUART("\nSTEP\n");
 
     // Update mouse position and maze
-    if (queue_pop(&state->queue, &state->pos))
+    if (!state.driving_to_goal)
     {
-        // Position is here already updated
-        state->maze[state->pos.x][state->pos.y].explored = true;
-        writeUART("POS updated\n");
+        writeUART("EXPLORING!\n");
+        if (!queue_pop(&state.queue, &state.pos))
+        {
+            writeUART("\n######## Finished exploring! ########\n");
+            stopDriveControl();
+            state.driving_to_goal = false;
+            state.step_idx = 0;
+            state.step_ready = false;
+            return;
+        }
+        else
+        {
+            stopDriveControl();
+        }
     }
     else
     {
-        // TODO: queue empty => Exploring finished!
+        writeUART("DRIVING TO GOAL!\n");
+        // While following a path, we arrive in the cell reached by the direction commanded in the previous step.
+        state.pos = get_pos_from_direction(state.dir);
     }
+
+    char buf[35];
+    snprintf(buf, sizeof(buf), "Current position: X=%d Y= %d\n", state.pos.x, state.pos.y);
+    writeUART(buf);
 
     // Turn around by default and set previous cell as neighbor
     GlobalDirection next_dir = floodfill_set_neighbor(REAR);
@@ -77,14 +95,12 @@ void floodfill_step(void)
     {
         next_dir = floodfill_set_neighbor(LEFT);
         floodfill_set_queue(next_dir);
-        writeUART("NO WALL LEFT\n");
     }
 
     if (!isWallRight())
     {
         next_dir = floodfill_set_neighbor(RIGHT);
         floodfill_set_queue(next_dir);
-        writeUART("NO WALL RIGHT\n");
     }
 
     if (!isWallFront())
@@ -94,14 +110,65 @@ void floodfill_step(void)
         writeUART("NO WALL FRONT\n");
     }
 
-    char buf[64];
-    snprintf(buf, sizeof(buf), "Queue head= X=%d Y= %d\n", state->queue.data[state->queue.head].x, state->queue.data[state->queue.head].y);
-    writeUART(buf);
+    state.maze[state.pos.x][state.pos.y].explored = true;
 
-    Path path = floodfill_get_path_to_pos(state->queue.data[state->queue.head]);
+    // Check if new positions were added to queue. If the queue is now empty everything was explored.
+    if (!state.driving_to_goal && queue_is_empty(&state.queue))
+    {
+        writeUART("\n######## Finished exploring! ########\n");
+        stopDriveControl();
+        state.driving_to_goal = false;
+        state.step_idx = 0;
+        state.step_ready = false;
+        return;
+    }
 
-    LocalDirection turn_dir = get_turn_direction(state->dir, path.directions[0]);
+    if (!queue_is_empty(&state.queue))
+    {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "Queue head: X=%d Y= %d\n", state.queue.data[state.queue.head].x, state.queue.data[state.queue.head].y);
+        writeUART(buf);
+    }
 
+    if (!state.driving_to_goal)
+    {
+        state.path_to_goal = floodfill_get_path_to_pos(state.queue.data[state.queue.head]);
+        reset_search_bools();
+
+        if (state.path_to_goal.number_steps > 1)
+        {
+            state.step_idx = 0;
+            state.driving_to_goal = true;
+            next_dir = state.path_to_goal.directions[state.step_idx++];
+        }
+
+        writeUART("Search path: ");
+        for (uint8_t i = 0; i < state.path_to_goal.number_steps; ++i)
+        {
+            char buf3[10];
+            snprintf(buf3, sizeof(buf3), "%s ", global_direction_to_string(state.path_to_goal.directions[i]));
+            writeUART(buf3);
+        }
+        writeUART("\n");
+    }
+    else
+    {
+        next_dir = state.path_to_goal.directions[state.step_idx++];
+
+        if (state.step_idx >= state.path_to_goal.number_steps)
+        {
+            state.driving_to_goal = false;
+            state.step_idx = 0;
+        }
+    }
+
+    LocalDirection turn_dir = get_turn_direction(state.dir, next_dir);
+
+    char buf2[64];
+    snprintf(buf2, sizeof(buf2), "Next direction: %s -> ", global_direction_to_string(next_dir));
+    writeUART(buf2);
+
+    // After turning the mouse drives straight automatically
     if (turn_dir == RIGHT)
     {
         writeUART("Turning Right\n");
@@ -117,13 +184,14 @@ void floodfill_step(void)
         writeUART("Turning 180\n");
         turn180();
     }
-    else {
+    else
+    {
         reset_state_dist();
+        driveStraight();
+        writeUART("Driving straight\n");
     }
 
-    state->dir = next_dir;
-    writeUART("Driving straight\n");
-    driveStraight();
+    state.dir = next_dir;
 }
 
 // Try to estimate if the mouse has reached the center of a cell
@@ -131,34 +199,34 @@ void floodfill_estimate_cell_center(void)
 {
     float total_dist = getLeftDistanceMeters() * 1000.0f;
 
-    float delta_dist = total_dist - state->total_dist_prev;
-    state->total_dist_prev = total_dist;
-    state->dist += delta_dist;
+    float delta_dist = total_dist - state.total_dist_prev;
+    state.total_dist_prev = total_dist;
+    state.dist += delta_dist;
 
     unsigned int mid_dist = readMidSensorValue();
     // Robot reached estimated cell center (via sensor reading)
-    if (mid_dist < 1300 && mid_dist > 1100 && getDriveStatePtr()->mode == CONTROLLER_MODE_DRIVE_STRAIGHT) 
+    if (mid_dist > 1500 && getDriveStatePtr()->mode == CONTROLLER_MODE_DRIVE_STRAIGHT)
     {
-        writeUART("MIDDLE BY SENSOR\n");
+        writeUART("Cell center detected - SENSOR\n\n");
         floodfill_step();
         return;
     }
 
     // Robot reached estimated cell center (via distance estimation)
-    if (state->dist >= CELL_SIZE_MM)
+    if (state.dist >= CELL_SIZE_MM)
     {
-        writeUART("MIDDLE BY DISTANCE\n");
+        // writeUART("Cell center detected - DISTANCE\n\n");
         floodfill_step();
         return;
     }
 }
 
-// Set neibors depending on current direction and detected walls
+// Set neighbors depending on current direction and detected walls. Returns NONE if current cell is already explored.
 GlobalDirection floodfill_set_neighbor(LocalDirection no_wall)
 {
-    volatile uint8_t *neighbors = &state->maze[state->pos.x][state->pos.y].neighbors;
+    volatile uint8_t *neighbors = &state.maze[state.pos.x][state.pos.y].neighbors;
 
-    if (state->dir == NORTH)
+    if (state.dir == NORTH)
     {
         if (no_wall == FRONT)
         {
@@ -181,7 +249,7 @@ GlobalDirection floodfill_set_neighbor(LocalDirection no_wall)
             return SOUTH;
         }
     }
-    else if (state->dir == EAST)
+    else if (state.dir == EAST)
     {
         if (no_wall == FRONT)
         {
@@ -204,7 +272,7 @@ GlobalDirection floodfill_set_neighbor(LocalDirection no_wall)
             return WEST;
         }
     }
-    else if (state->dir == SOUTH)
+    else if (state.dir == SOUTH)
     {
         if (no_wall == FRONT)
         {
@@ -227,7 +295,7 @@ GlobalDirection floodfill_set_neighbor(LocalDirection no_wall)
             return NORTH;
         }
     }
-    else if (state->dir == WEST)
+    else if (state.dir == WEST)
     {
         if (no_wall == FRONT)
         {
@@ -256,29 +324,41 @@ GlobalDirection floodfill_set_neighbor(LocalDirection no_wall)
 
 bool floodfill_set_queue(GlobalDirection free_dir)
 {
+    if (state.maze[state.pos.x][state.pos.y].explored)
+    {
+        return false;
+    }
+
     Pos new_pos;
 
     if (free_dir == NORTH)
     {
-        new_pos = pos_make(state->pos.x, state->pos.y + 1);
+        new_pos = make_pos(state.pos.x, state.pos.y + 1);
     }
     else if (free_dir == EAST)
     {
-        new_pos = pos_make(state->pos.x + 1, state->pos.y);
+        new_pos = make_pos(state.pos.x + 1, state.pos.y);
     }
     else if (free_dir == SOUTH)
     {
-        new_pos = pos_make(state->pos.x, state->pos.y - 1);
+        new_pos = make_pos(state.pos.x, state.pos.y - 1);
+    }
+    else if (free_dir == WEST)
+    {
+        new_pos = make_pos(state.pos.x - 1, state.pos.y);
     }
     else
     {
-        new_pos = pos_make(state->pos.x - 1, state->pos.y);
+        return false;
     }
 
     // Only add new position to queue if it is not explored
-    if (!state->maze[new_pos.x][new_pos.y].explored)
+    if (!state.maze[new_pos.x][new_pos.y].explored)
     {
-        return queue_push(&state->queue, new_pos);
+        char buf[40];
+        snprintf(buf, sizeof(buf), "Added new pos to queue: X=%d Y= %d\n", new_pos.x, new_pos.y);
+        writeUART(buf);
+        return queue_push(&state.queue, new_pos);
     }
 
     return false;
@@ -286,68 +366,77 @@ bool floodfill_set_queue(GlobalDirection free_dir)
 
 Path floodfill_get_path_to_pos(Pos new_pos)
 {
-    Path path = {0, NONE};
-    Pos pos = state->pos;
+    Path path = {0};
+    path.number_steps = recursive_search(path.directions, 0, state.pos, new_pos);
+    return path;
+}
 
-    // Current position is new position
-    if (new_pos.x == pos.x && new_pos.y == pos.y)
+uint8_t recursive_search(GlobalDirection *dir_ptr, uint8_t path_length, Pos start, Pos goal)
+{
+    Cell *cell = &state.maze[start.x][start.y];
+
+    if (cell->searched)
     {
-        return path;
+        return 0;
+    }
+    cell->searched = true;
+
+    if (start.x == goal.x && start.y == goal.y)
+    {
+        return path_length;
     }
 
-    Positions positions = get_positions_from_neighbors(pos, state->maze[pos.x][pos.y].neighbors);
+    Positions positions = get_positions_from_neighbors(start, cell->neighbors);
 
+    // Depth-first search with backtracking. As soon as a branch reaches the
+    // goal, the written directions in dir_ptr form the path prefix to it.
     for (uint8_t i = 0u; i < positions.num; ++i)
     {
-        Pos temp_pos = positions.next_positions[i];
-        if (temp_pos.x == new_pos.x && temp_pos.y == new_pos.y)
+        Pos neighbor_pos = positions.neighbor_positions[i];
+        dir_ptr[path_length] = positions.neighboring_directions[i];
+        uint8_t found_length = recursive_search(dir_ptr, path_length + 1, neighbor_pos, goal);
+        if (found_length > 0)
         {
-            path.number_steps = 1;
-            path.directions = &positions.next_directions[i];
-            return path;
+            return found_length;
         }
     }
 
-    return path;
+    return 0;
 }
 
 Positions get_positions_from_neighbors(Pos current_pos, uint8_t neighbors)
 {
-    Pos pos_arr[4];
-    GlobalDirection dir_arr[4];
+    Positions positions = {0};
     uint8_t idx = 0;
 
     if (neighbors & NORTH)
     {
-        pos_arr[idx] = pos_make(current_pos.x, current_pos.y + 1);
-        dir_arr[idx] = NORTH;
+        positions.neighbor_positions[idx] = make_pos(current_pos.x, current_pos.y + 1);
+        positions.neighboring_directions[idx] = NORTH;
         idx++;
     }
 
     if (neighbors & EAST)
     {
-        pos_arr[idx] = pos_make(current_pos.x + 1, current_pos.y);
-        dir_arr[idx] = EAST;
+        positions.neighbor_positions[idx] = make_pos(current_pos.x + 1, current_pos.y);
+        positions.neighboring_directions[idx] = EAST;
         idx++;
     }
 
     if (neighbors & SOUTH)
     {
-        pos_arr[idx] = pos_make(current_pos.x, current_pos.y - 1);
-        dir_arr[idx] = SOUTH;
+        positions.neighbor_positions[idx] = make_pos(current_pos.x, current_pos.y - 1);
+        positions.neighboring_directions[idx] = SOUTH;
         idx++;
     }
 
     if (neighbors & WEST)
     {
-        pos_arr[idx] = pos_make(current_pos.x - 1, current_pos.y);
-        dir_arr[idx] = WEST;
+        positions.neighbor_positions[idx] = make_pos(current_pos.x - 1, current_pos.y);
+        positions.neighboring_directions[idx] = WEST;
         idx++;
     }
 
-    Positions positions;
-    positions.next_positions = pos_arr;
-    positions.next_directions = dir_arr;
     positions.num = idx;
 
     return positions;
@@ -376,11 +465,71 @@ LocalDirection get_turn_direction(GlobalDirection current_dir, GlobalDirection n
         return RIGHT;
     }
 
-    return LEFT;
+    if ((current_dir == NORTH && next_dir == WEST) ||
+        (current_dir == EAST && next_dir == NORTH) ||
+        (current_dir == SOUTH && next_dir == EAST) ||
+        (current_dir == WEST && next_dir == SOUTH))
+    {
+        return LEFT;
+    }
+
+    return FRONT;
+}
+
+Pos get_pos_from_direction(GlobalDirection dir)
+{
+    if (dir == NORTH)
+    {
+        return make_pos(state.pos.x, state.pos.y + 1);
+    }
+    else if (dir == EAST)
+    {
+        return make_pos(state.pos.x + 1, state.pos.y);
+    }
+    else if (dir == SOUTH)
+    {
+        return make_pos(state.pos.x, state.pos.y - 1);
+    }
+    else if (dir == WEST)
+    {
+        return make_pos(state.pos.x - 1, state.pos.y);
+    }
+
+    return state.pos;
 }
 
 void reset_state_dist(void)
 {
-    state->dist = 0;
-    state->step_ready = true;
+    state.dist = 0;
+    state.step_ready = true;
+}
+
+void reset_search_bools(void)
+{
+    for (uint8_t x = 0; x < MAZE_SIZE; x++)
+    {
+        for (uint8_t y = 0; y < MAZE_SIZE; y++)
+        {
+            state.maze[x][y].searched = false;
+        }
+    }
+}
+
+const char *global_direction_to_string(GlobalDirection dir)
+{
+    switch (dir)
+    {
+    case NORTH:
+        return "NORTH";
+    case EAST:
+        return "EAST";
+    case SOUTH:
+        return "SOUTH";
+    case WEST:
+        return "WEST";
+    case NONE:
+        return "NONE";
+    default:
+        return "UNKNOWN";
+    }
 }

@@ -23,25 +23,29 @@ static int motor_stop_latched = 0;
 // Mechanical direction:
 // left motor forward  = counter-clockwise
 // right motor forward = clockwise
-#define LEFT_MOTOR_FORWARD_IN1_STATE  (1)
-#define LEFT_MOTOR_FORWARD_IN2_STATE  (0)
+#define LEFT_MOTOR_FORWARD_IN1_STATE (1)
+#define LEFT_MOTOR_FORWARD_IN2_STATE (0)
 #define RIGHT_MOTOR_FORWARD_IN1_STATE (1)
 #define RIGHT_MOTOR_FORWARD_IN2_STATE (0)
 
-#define LEFT_ENCODER_FORWARD_SIGN  (1L)
+#define LEFT_ENCODER_FORWARD_SIGN (1L)
 #define RIGHT_ENCODER_FORWARD_SIGN (-1L)
 
 static float clampDutyCycle(float speed)
 {
     float duty_cycle;
 
-    if (speed < 0.0f) {
+    if (speed < 0.0f)
+    {
         duty_cycle = -speed;
-    } else {
+    }
+    else
+    {
         duty_cycle = speed;
     }
 
-    if (duty_cycle > MOTOR_MAX_DUTY_CYCLE) {
+    if (duty_cycle > MOTOR_MAX_DUTY_CYCLE)
+    {
         duty_cycle = MOTOR_MAX_DUTY_CYCLE;
     }
 
@@ -50,11 +54,13 @@ static float clampDutyCycle(float speed)
 
 static float clampMotorCommand(float speed)
 {
-    if (speed > 1.0f) {
+    if (speed > 1.0f)
+    {
         return 1.0f;
     }
 
-    if (speed < -1.0f) {
+    if (speed < -1.0f)
+    {
         return -1.0f;
     }
 
@@ -70,13 +76,18 @@ static void applyLeftMotorOutput(float speed)
 {
     float duty_cycle = clampDutyCycle(speed);
 
-    if (speed > 0.0f) {
+    if (speed > 0.0f)
+    {
         MOTOR_LEFT_IN1 = LEFT_MOTOR_FORWARD_IN1_STATE;
         MOTOR_LEFT_IN2 = LEFT_MOTOR_FORWARD_IN2_STATE;
-    } else if (speed < 0.0f) {
+    }
+    else if (speed < 0.0f)
+    {
         MOTOR_LEFT_IN1 = !LEFT_MOTOR_FORWARD_IN1_STATE;
         MOTOR_LEFT_IN2 = !LEFT_MOTOR_FORWARD_IN2_STATE;
-    } else {
+    }
+    else
+    {
         MOTOR_LEFT_IN1 = 0;
         MOTOR_LEFT_IN2 = 0;
     }
@@ -88,13 +99,18 @@ static void applyRightMotorOutput(float speed)
 {
     float duty_cycle = clampDutyCycle(speed);
 
-    if (speed > 0.0f) {
+    if (speed > 0.0f)
+    {
         MOTOR_RIGHT_IN1 = RIGHT_MOTOR_FORWARD_IN1_STATE;
         MOTOR_RIGHT_IN2 = RIGHT_MOTOR_FORWARD_IN2_STATE;
-    } else if (speed < 0.0f) {
+    }
+    else if (speed < 0.0f)
+    {
         MOTOR_RIGHT_IN1 = !RIGHT_MOTOR_FORWARD_IN1_STATE;
         MOTOR_RIGHT_IN2 = !RIGHT_MOTOR_FORWARD_IN2_STATE;
-    } else {
+    }
+    else
+    {
         MOTOR_RIGHT_IN1 = 0;
         MOTOR_RIGHT_IN2 = 0;
     }
@@ -104,7 +120,8 @@ static void applyRightMotorOutput(float speed)
 
 static void refreshMotorOutputs(void)
 {
-    if (motor_stop_latched) {
+    if (motor_stop_latched)
+    {
         applyLeftMotorOutput(0.0f);
         applyRightMotorOutput(0.0f);
         return;
@@ -250,6 +267,20 @@ void stopMotors(void)
     refreshMotorOutputs();
 }
 
+void brakeMotors(void)
+{
+    left_motor_command = 0.0f;
+    right_motor_command = 0.0f;
+
+    // Request active braking on the H-bridge instead of coasting.
+    MOTOR_LEFT_IN1 = 1;
+    MOTOR_LEFT_IN2 = 1;
+    MOTOR_RIGHT_IN1 = 1;
+    MOTOR_RIGHT_IN2 = 1;
+    setDCMotorLeft(0.0f);
+    setDCMotorRight(0.0f);
+}
+
 float getLeftDistanceMeters(void)
 {
     long counts = readLeftEncoderCounts();
@@ -264,7 +295,6 @@ float getRightDistanceMeters(void)
 
     return ((float)counts / ENCODER_COUNTS_PER_WHEEL_REV) * wheel_circumference_m;
 }
-
 
 float getLeftRotations(void)
 {
@@ -282,9 +312,12 @@ void __attribute__((__interrupt__, auto_psv)) _QEI1Interrupt(void)
 {
     IFS3bits.QEI1IF = 0;
 
-    if (POS1CNT < 32768) {
+    if (POS1CNT < 32768)
+    {
         left_encoder_turns += 0x10000L;
-    } else {
+    }
+    else
+    {
         left_encoder_turns -= 0x10000L;
     }
 }
@@ -293,9 +326,12 @@ void __attribute__((__interrupt__, auto_psv)) _QEI2Interrupt(void)
 {
     IFS4bits.QEI2IF = 0;
 
-    if (POS2CNT < 32768) {
+    if (POS2CNT < 32768)
+    {
         right_encoder_turns += 0x10000L;
-    } else {
+    }
+    else
+    {
         right_encoder_turns -= 0x10000L;
     }
 }

@@ -46,11 +46,11 @@ void __attribute__((__interrupt__, auto_psv)) _CNInterrupt(void)
 
         if (started)
         {
-            setDriveSpeedMmps(600);
+            driveStraight();
         }
         else
         {
-            setDriveSpeedMmps(0);
+            stopDriveControl();
         }
     }
 

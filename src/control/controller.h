@@ -5,6 +5,16 @@
 
 #define WHEEL_SPEED_KP (1.6f)
 #define WHEEL_SPEED_KI (18.0f)
+#define DEFAULT_DRIVE_SPEED_MMPS (400)
+
+// low-pass filter for encoder-based speed measurement during straight driving
+#define WHEEL_SPEED_FILTER_ALPHA (0.50f)
+
+// smooth wall-based trim so sensor noise does not jitter the drive command
+#define WALL_TRIM_FILTER_ALPHA (0.30f)
+
+// limit how fast the straight-drive command may change every 10 ms
+#define DRIVE_COMMAND_SLEW_PER_SAMPLE (0.07f)
 
 // used to adjust the speed of the motors when mouse is not in the middle
 #define TRIM_ADJUST_KP (0.005f)
@@ -44,6 +54,8 @@ typedef struct
 {
     float target_speed_mps;
     float integral_term_straight;
+    float filtered_speed_mps;
+    float filtered_trim_command;
     float adjusted_speed_mps;
 } WheelSpeedController;
 

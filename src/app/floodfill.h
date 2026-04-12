@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "controller.h"
 #include "motors.h"
@@ -42,7 +43,14 @@ typedef struct
     uint8_t dist_to_start;
     uint8_t dist_to_goal;
     bool explored;
+    bool searched;
 } Cell;
+
+typedef struct
+{
+    uint8_t number_steps;
+    GlobalDirection directions[36];
+} Path;
 
 typedef struct
 {
@@ -50,6 +58,9 @@ typedef struct
     float dist; // Distance since last cell-mid-point
     Cell maze[MAZE_SIZE][MAZE_SIZE];
     bool step_ready;
+    bool driving_to_goal;
+    Path path_to_goal;
+    uint8_t step_idx;
     float total_dist_prev;
     GlobalDirection dir;
     volatile PosQueue queue;
@@ -57,27 +68,26 @@ typedef struct
 
 typedef struct
 {
-    uint8_t number_steps;
-    GlobalDirection *directions;
-} Path;
-
-typedef struct
-{
-    Pos *next_positions;
-    GlobalDirection *next_directions;
+    Pos neighbor_positions[4];
+    GlobalDirection neighboring_directions[4];
     uint8_t num;
 } Positions;
 
 volatile MouseState *getMouseState(void);
-Pos pos_make(uint8_t x, uint8_t y);
+Pos make_pos(uint8_t x, uint8_t y);
 void floodfill_init(void);
 void floodfill_step(void);
 void floodfill_estimate_cell_center(void);
 GlobalDirection floodfill_set_neighbor(LocalDirection no_wall);
 bool floodfill_set_queue(GlobalDirection dir);
 Path floodfill_get_path_to_pos(Pos new_pos);
-Positions get_positions_from_neighbors(Pos current_pos, uint8_t neighbors);
+uint8_t recursive_search(GlobalDirection *dir_ptr, uint8_t path_length, Pos start, Pos goal);
+Positions
+get_positions_from_neighbors(Pos current_pos, uint8_t neighbors);
 LocalDirection get_turn_direction(GlobalDirection current_dir, GlobalDirection next_dir);
+Pos get_pos_from_direction(GlobalDirection dir);
 void reset_state_dist(void);
+void reset_search_bools(void);
+const char *global_direction_to_string(GlobalDirection dir);
 
 #endif /* FLOODFILL_H */
