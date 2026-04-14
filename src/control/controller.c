@@ -4,7 +4,7 @@
 #include "motors.h"
 #include "adc.h"
 #include "uart.h"
-#include "floodfill.h"
+#include "explore.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -201,7 +201,7 @@ static void updateTurnController(void)
         resetWheelSpeedController(&drive_state.right_wheel);
         setLeftMotor(1.0f); // give motors a short forward momentum to reduce vibrations
         setRightMotor(1.0f);
-        reset_state_dist();
+        explore_resetStateDistances();
         driveStraight();
         return;
     }

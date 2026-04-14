@@ -1,14 +1,9 @@
-#ifndef FLOODFILL_H
-#define FLOODFILL_H
+#ifndef EXPLORE_H
+#define EXPLORE_H
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 
-#include "controller.h"
-#include "motors.h"
-#include "adc.h"
-#include "uart.h"
 #include "queue.h"
 
 #define MAZE_SIZE 6
@@ -40,8 +35,6 @@ typedef enum
 typedef struct
 {
     uint8_t neighbors; // bit 3: north, bit 2: east, bit 1: south, bit 0: west
-    uint8_t dist_to_start;
-    uint8_t dist_to_goal;
     bool explored;
     bool searched;
 } Cell;
@@ -73,21 +66,20 @@ typedef struct
     uint8_t num;
 } Positions;
 
-volatile MouseState *getMouseState(void);
-Pos make_pos(uint8_t x, uint8_t y);
-void floodfill_init(void);
-void floodfill_step(void);
-void floodfill_estimate_cell_center(void);
-GlobalDirection floodfill_set_neighbor(LocalDirection no_wall);
-bool floodfill_set_queue(GlobalDirection dir);
-Path floodfill_get_path_to_pos(Pos new_pos);
-uint8_t recursive_search(GlobalDirection *dir_ptr, uint8_t path_length, Pos start, Pos goal);
-Positions
-get_positions_from_neighbors(Pos current_pos, uint8_t neighbors);
-LocalDirection get_turn_direction(GlobalDirection current_dir, GlobalDirection next_dir);
-Pos get_pos_from_direction(GlobalDirection dir);
-void reset_state_dist(void);
-void reset_search_bools(void);
-const char *global_direction_to_string(GlobalDirection dir);
+void explore_init(void);
+void explore_estimateCellCenter(void);
+void explore_step(void);
+volatile MouseState *explore_getMouseState(void);
+Pos explore_makePos(uint8_t x, uint8_t y);
+GlobalDirection explore_setNeighbor(LocalDirection no_wall);
+bool explore_setQueue(GlobalDirection dir);
+Path explore_getPathToPos(Pos new_pos);
+uint8_t explore_recursiveSearch(GlobalDirection *dir_ptr, uint8_t path_length, Pos start, Pos goal);
+Positions explore_getPositionsFromNeighbors(Pos current_pos, uint8_t neighbors);
+LocalDirection explore_getTurnDirection(GlobalDirection current_dir, GlobalDirection next_dir);
+Pos explore_getPosFromDirection(GlobalDirection dir);
+void explore_resetStateDistances(void);
+void explore_resetSearchBools(void);
+const char *explore_globalDirToString(GlobalDirection dir);
 
-#endif /* FLOODFILL_H */
+#endif /* EXPLORE_H */

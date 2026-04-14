@@ -52,7 +52,7 @@
 #include "motors.h"
 #include "selfdestruct.h"
 #include "controller.h"
-#include "floodfill.h"
+#include "explore.h"
 #include "queue.h"
 
 int main()
@@ -93,7 +93,7 @@ int main()
   startTimer1();
   startTimer2();
 
-  floodfill_init();
+  explore_init();
 
   while (1)
   {

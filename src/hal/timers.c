@@ -7,7 +7,7 @@
 #include "pwm.h"
 #include <math.h>
 #include <stdio.h>
-#include "floodfill.h"
+#include "explore.h"
 #include "selfdestruct.h"
 
 static void updateLEDGreenSine(void)
@@ -151,7 +151,7 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
 
     if (isStarted())
     {
-        floodfill_estimate_cell_center();
+        explore_estimateCellCenter();
     }
 
     // unsigned val = readMidSensorValue();
