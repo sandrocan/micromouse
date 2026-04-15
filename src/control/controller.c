@@ -202,7 +202,15 @@ static void updateTurnController(void)
         setLeftMotor(1.0f); // give motors a short forward momentum to reduce vibrations
         setRightMotor(1.0f);
         explore_resetStateDistances();
-        driveStraight();
+        if (!explore_getMouseState()->finishedExploring)
+        {
+            driveStraight();
+        }
+        else
+
+                {
+            stopDriveControl();
+        }
         return;
     }
 
@@ -228,30 +236,6 @@ void updateController(void)
     unsigned int dist_mid = readMidSensorValue();
     unsigned int dist_left = readLeftSensorValue();
     unsigned int dist_right = readRightSensorValue();
-
-    static int cnt = 0;
-    cnt++;
-    if (cnt >= 10)
-    {
-        cnt = 0;
-        char uart_buffer[96];
-        snprintf(uart_buffer, sizeof(uart_buffer),
-                 "left=%.3f right=%.3f target=%d ls=%u rs=%u fs=%u lcmd=%d rcmd=%d\r\n",
-                 (measured_left_wheel_speed_mps),
-                 (measured_right_wheel_speed_mps),
-                 getLeftTargetSpeedMmps(),
-                 dist_left,
-                 dist_right,
-                 dist_mid,
-                 getLeftMotorCommandPermille(),
-                 getRightMotorCommandPermille());
-        // writeUART(uart_buffer);
-        snprintf(uart_buffer, sizeof(uart_buffer),
-                 "Distance since start: %.3f, Rotations since start: %.3f",
-                 getLeftDistanceMeters(),
-                 getLeftRotations());
-        // writeUART(uart_buffer);
-    }
 
     if (drive_state.mode == CONTROLLER_MODE_STOP)
     {

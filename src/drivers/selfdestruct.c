@@ -5,6 +5,7 @@
 #include "IOconfig.h"
 
 #define SELFDESTRUCT_DEBOUNCE_DELAY_CYCLES (60000U)
+#define SELFDESTRUCT_START_DELAY_CYCLES (50000000UL)
 
 static volatile bool started = false;
 
@@ -36,16 +37,19 @@ void initSelfDestructInterrupt(void)
 void __attribute__((__interrupt__, auto_psv)) _CNInterrupt(void)
 {
     bool button_pressed;
+    bool was_started;
 
     debounceDelay();
     button_pressed = SELFDESTRUCT;
 
     if (button_pressed)
     {
+        was_started = started;
         started = !started;
 
-        if (started)
+        if (!was_started)
         {
+            __delay32(SELFDESTRUCT_START_DELAY_CYCLES);
             driveStraight();
         }
         else

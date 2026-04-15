@@ -3,9 +3,9 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#define WHEEL_SPEED_KP (1.6f)
-#define WHEEL_SPEED_KI (18.0f)
-#define DEFAULT_DRIVE_SPEED_MMPS (400)
+#define WHEEL_SPEED_KP (1.4f)
+#define WHEEL_SPEED_KI (16.0f)
+#define DEFAULT_DRIVE_SPEED_MMPS (500)
 
 // low-pass filter for encoder-based speed measurement during straight driving
 #define WHEEL_SPEED_FILTER_ALPHA (0.50f)
@@ -17,7 +17,7 @@
 #define DRIVE_COMMAND_SLEW_PER_SAMPLE (0.07f)
 
 // used to adjust the speed of the motors when mouse is not in the middle
-#define TRIM_ADJUST_KP (0.005f)
+#define TRIM_ADJUST_KP (0.004f)
 
 // target distance from wall
 #define TARGET_DISTANCE (1130)
