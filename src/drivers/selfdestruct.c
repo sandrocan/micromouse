@@ -1,5 +1,6 @@
 #include "selfdestruct.h"
 #include "controller.h"
+#include "explore.h"
 #include <stdbool.h>
 
 #include "IOconfig.h"
@@ -8,6 +9,7 @@
 #define SELFDESTRUCT_START_DELAY_CYCLES (50000000UL)
 
 static volatile bool started = false;
+static volatile uint8_t clickCount = 0;
 
 static void debounceDelay(void)
 {
@@ -37,23 +39,41 @@ void initSelfDestructInterrupt(void)
 void __attribute__((__interrupt__, auto_psv)) _CNInterrupt(void)
 {
     bool button_pressed;
-    bool was_started;
+    volatile MouseState *mouseState = explore_getMouseState();
 
     debounceDelay();
     button_pressed = SELFDESTRUCT;
 
     if (button_pressed)
     {
-        was_started = started;
-        started = !started;
-
-        if (!was_started)
+        if (clickCount == 0)
         {
+            clickCount = 1;
+            started = true;
             __delay32(SELFDESTRUCT_START_DELAY_CYCLES);
             driveStraight();
         }
+        else if (clickCount == 1)
+        {
+            if (mouseState->finishedExploring)
+            {
+                clickCount = 2;
+                mouseState->finalGoal = explore_makePos(GOAL_X, GOAL_Y);
+                mouseState->finalGoalActive = true;
+                mouseState->finalPathToGoal.stepCount = 0;
+                mouseState->drivingToGoal = false;
+                mouseState->finishedExploring = false;
+                mouseState->stepIndex = 0;
+                started = true;
+                __delay32(SELFDESTRUCT_START_DELAY_CYCLES);
+                explore_resetStateDistances();
+                explore_step();
+            }
+        }
         else
         {
+            started = false;
+            clickCount = 0;
             stopDriveControl();
         }
     }

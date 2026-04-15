@@ -207,8 +207,7 @@ static void updateTurnController(void)
             driveStraight();
         }
         else
-
-                {
+        {
             stopDriveControl();
         }
         return;

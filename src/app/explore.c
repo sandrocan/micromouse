@@ -6,8 +6,17 @@
 #include "uart.h"
 
 #include <stdio.h>
+#include <limits.h>
 
 static volatile MouseState state;
+
+static void explore_clearSearchFlags(void);
+static void explore_recursiveSearchBest(GlobalDirection *currentPath,
+                                        uint8_t currPathLength,
+                                        Pos start,
+                                        Pos goal,
+                                        GlobalDirection *bestPath,
+                                        uint8_t *bestLength);
 
 // Initialize mouse start state
 void explore_init(void)
@@ -16,11 +25,13 @@ void explore_init(void)
     state.pos.y = START_Y;
     state.dist = 0;
     state.stepReady = true;
+    state.finalGoalActive = false;
     state.drivingToGoal = false;
     state.finishedExploring = false;
     state.stepIndex = 0;
     state.totalDistPrev = 0;
     state.dir = START_DIR;
+    state.finalGoal = explore_makePos(GOAL_X, GOAL_Y);
     queue_init(&state.queue);                        // Initialize LIFO queue
     queue_push(&state.queue, explore_makePos(0, 0)); // The robot should return zu its start position if everything else is explored
     queue_push(&state.queue, explore_makePos(0, 1)); // Add cell (0,1) to queue -> First point where to go
@@ -74,13 +85,37 @@ void explore_step(void)
 
     writeUART("\nSTEP\n");
 
-    if (!state.drivingToGoal)
+    if (state.finalGoalActive)
+    {
+        writeUART("DRIVING TO FINAL GOAL!\n");
+        if (state.drivingToGoal || state.finalPathToGoal.stepCount > 0)
+        {
+            state.pos = explore_getPosFromDirection(state.dir);
+        }
+    }
+    else if (!state.drivingToGoal)
     {
         writeUART("EXPLORING!\n");
         if (!queue_pop(&state.queue, &state.pos))
         {
             writeUART("\n######## Finished exploring! ########\n");
             state.finishedExploring = true;
+            if (state.dir == NORTH)
+            {
+                state.dir = SOUTH;
+            }
+            else if (state.dir == EAST)
+            {
+                state.dir = WEST;
+            }
+            else if (state.dir == SOUTH)
+            {
+                state.dir = NORTH;
+            }
+            else if (state.dir == WEST)
+            {
+                state.dir = EAST;
+            }
             turn180();
             state.drivingToGoal = false;
             state.stepIndex = 0;
@@ -121,10 +156,26 @@ void explore_step(void)
 
     state.maze[state.pos.x][state.pos.y].explored = true;
 
-    if (!state.drivingToGoal && queue_is_empty(&state.queue))
+    if (!state.finalGoalActive && !state.drivingToGoal && queue_is_empty(&state.queue))
     {
         writeUART("\n######## Finished exploring! ########\n");
         state.finishedExploring = true;
+        if (state.dir == NORTH)
+        {
+            state.dir = SOUTH;
+        }
+        else if (state.dir == EAST)
+        {
+            state.dir = WEST;
+        }
+        else if (state.dir == SOUTH)
+        {
+            state.dir = NORTH;
+        }
+        else if (state.dir == WEST)
+        {
+            state.dir = EAST;
+        }
         turn180();
         state.drivingToGoal = false;
         state.stepIndex = 0;
@@ -132,7 +183,7 @@ void explore_step(void)
         return;
     }
 
-    if (!queue_is_empty(&state.queue))
+    if (!state.finalGoalActive && !queue_is_empty(&state.queue))
     {
         char queue_buf[64];
         snprintf(queue_buf, sizeof(queue_buf), "Queue head: X=%d Y= %d\n",
@@ -141,38 +192,96 @@ void explore_step(void)
         writeUART(queue_buf);
     }
 
-    // When not already following a multi-step path, compute the path to the next queued cell.
-    if (!state.drivingToGoal)
+    if (state.finalGoalActive)
     {
-        state.pathToNextPos = explore_getPathToPos(state.queue.data[state.queue.head]);
-
-        // Only switch into path-following mode if the next queued cell is not directly adjacent.
-        if (state.pathToNextPos.stepCount > 1)
+        if (!state.drivingToGoal)
         {
             state.stepIndex = 0;
-            state.drivingToGoal = true;
-            nextDir = state.pathToNextPos.directions[state.stepIndex++];
-        }
+            state.finalPathToGoal = explore_getPathToPos(state.finalGoal);
 
-        writeUART("Search path: ");
-        for (uint8_t i = 0; i < state.pathToNextPos.stepCount; ++i)
-        {
-            char pathBuf[10];
-            snprintf(pathBuf, sizeof(pathBuf), "%s ",
-                     explore_globalDirToString(state.pathToNextPos.directions[i]));
-            writeUART(pathBuf);
+            writeUART("Final path: ");
+            for (uint8_t i = 0; i < state.finalPathToGoal.stepCount; ++i)
+            {
+                char pathBuf[10];
+                snprintf(pathBuf, sizeof(pathBuf), "%s ",
+                         explore_globalDirToString(state.finalPathToGoal.directions[i]));
+                writeUART(pathBuf);
+            }
+            writeUART("\n");
+
+            if (state.finalPathToGoal.stepCount == 0)
+            {
+                if (state.pos.x == state.finalGoal.x && state.pos.y == state.finalGoal.y)
+                {
+                    writeUART("\n######## Final goal reached! ########\n");
+                }
+                else
+                {
+                    writeUART("\n######## No path to final goal! ########\n");
+                }
+
+                state.finalGoalActive = false;
+                state.drivingToGoal = false;
+                state.stepIndex = 0;
+                state.dist = 0;
+                state.stepReady = false;
+                stopDriveControl();
+                return;
+            }
+
+            if (state.finalPathToGoal.stepCount > 1)
+            {
+                state.drivingToGoal = true;
+            }
+
+            nextDir = state.finalPathToGoal.directions[state.stepIndex++];
         }
-        writeUART("\n");
+        else
+        {
+            nextDir = state.finalPathToGoal.directions[state.stepIndex++];
+
+            if (state.stepIndex >= state.finalPathToGoal.stepCount)
+            {
+                state.drivingToGoal = false;
+                state.stepIndex = 0;
+            }
+        }
     }
     else
     {
-        // Continue following the current multi-step path.
-        nextDir = state.pathToNextPos.directions[state.stepIndex++];
-
-        if (state.stepIndex >= state.pathToNextPos.stepCount)
+        // When not already following a multi-step path, compute the path to the next queued cell.
+        if (!state.drivingToGoal)
         {
-            state.drivingToGoal = false;
-            state.stepIndex = 0;
+            state.pathToNextPos = explore_getPathToPos(state.queue.data[state.queue.head]);
+
+            // Only switch into path-following mode if the next queued cell is not directly adjacent.
+            if (state.pathToNextPos.stepCount > 1)
+            {
+                state.stepIndex = 0;
+                state.drivingToGoal = true;
+                nextDir = state.pathToNextPos.directions[state.stepIndex++];
+            }
+
+            writeUART("Search path: ");
+            for (uint8_t i = 0; i < state.pathToNextPos.stepCount; ++i)
+            {
+                char pathBuf[10];
+                snprintf(pathBuf, sizeof(pathBuf), "%s ",
+                         explore_globalDirToString(state.pathToNextPos.directions[i]));
+                writeUART(pathBuf);
+            }
+            writeUART("\n");
+        }
+        else
+        {
+            // Continue following the current multi-step path.
+            nextDir = state.pathToNextPos.directions[state.stepIndex++];
+
+            if (state.stepIndex >= state.pathToNextPos.stepCount)
+            {
+                state.drivingToGoal = false;
+                state.stepIndex = 0;
+            }
         }
     }
 
@@ -357,9 +466,23 @@ bool explore_enqueueNeighborInDirection(GlobalDirection freeDir)
 Path explore_getPathToPos(Pos newPos)
 {
     Path path = {0};
-    path.stepCount = explore_recursiveSearch(path.directions, 0, state.pos, newPos);
+    uint8_t bestLength = UINT8_MAX;
+    GlobalDirection currentPath[MAZE_SIZE * MAZE_SIZE] = {NONE};
 
-    // Clear per-search visited flags before the next path lookup.
+    explore_clearSearchFlags();
+    explore_recursiveSearchBest(currentPath, 0, state.pos, newPos, path.directions, &bestLength);
+    explore_clearSearchFlags();
+
+    if (bestLength != UINT8_MAX)
+    {
+        path.stepCount = bestLength;
+    }
+
+    return path;
+}
+
+static void explore_clearSearchFlags(void)
+{
     for (uint8_t x = 0; x < MAZE_SIZE; x++)
     {
         for (uint8_t y = 0; y < MAZE_SIZE; y++)
@@ -367,42 +490,51 @@ Path explore_getPathToPos(Pos newPos)
             state.maze[x][y].searched = false;
         }
     }
-
-    return path;
 }
 
-// Recursive search-function, returning 0 if no goal cell was found
-// If goal was found return the path length from start to goal position
-uint8_t explore_recursiveSearch(GlobalDirection *dirPtr, uint8_t pathLength, Pos start, Pos goal)
+static void explore_recursiveSearchBest(GlobalDirection *currentPath,
+                                        uint8_t currPathLength,
+                                        Pos start,
+                                        Pos goal,
+                                        GlobalDirection *bestPath,
+                                        uint8_t *bestLength)
 {
-    Cell *cell = &state.maze[start.x][start.y];
-
-    if (cell->searched)
+    if (currPathLength >= *bestLength || currPathLength >= (MAZE_SIZE * MAZE_SIZE))
     {
-        return 0;
+        return;
     }
-    cell->searched = true;
 
-    // Stop once the goal cell is reached.
     if (start.x == goal.x && start.y == goal.y)
     {
-        return pathLength;
+        *bestLength = currPathLength;
+        for (uint8_t i = 0; i < currPathLength; ++i)
+        {
+            bestPath[i] = currentPath[i];
+        }
+        return;
     }
+
+    Cell *cell = &state.maze[start.x][start.y];
+    if (cell->searched)
+    {
+        return;
+    }
+
+    cell->searched = true;
 
     NeighborCells neighborCells = explore_getNeighborCells(start, cell->neighbors);
-
     for (uint8_t i = 0u; i < neighborCells.count; ++i)
     {
-        Pos neighborPos = neighborCells.positions[i];
-        dirPtr[pathLength] = neighborCells.directions[i];
-        uint8_t foundLength = explore_recursiveSearch(dirPtr, pathLength + 1, neighborPos, goal);
-        if (foundLength > 0)
-        {
-            return foundLength;
-        }
+        currentPath[currPathLength] = neighborCells.directions[i];
+        explore_recursiveSearchBest(currentPath,
+                                    currPathLength + 1,
+                                    neighborCells.positions[i],
+                                    goal,
+                                    bestPath,
+                                    bestLength);
     }
 
-    return 0;
+    cell->searched = false;
 }
 
 NeighborCells explore_getNeighborCells(Pos currentPos, uint8_t neighbors)

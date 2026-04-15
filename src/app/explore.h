@@ -12,6 +12,8 @@
 #define START_DIR NORTH
 
 #define CELL_SIZE_MM 180.0f
+#define GOAL_X 5
+#define GOAL_Y 0
 
 typedef enum
 {
@@ -32,9 +34,7 @@ typedef enum
 
 typedef struct
 {
-    uint8_t neighbors;    // bit 3: north, bit 2: east, bit 1: south, bit 0: west
-    uint8_t stepsToStart; // used by floodfill
-    uint8_t stepsToGoal;  // used by floodfill
+    uint8_t neighbors; // bit 3: north, bit 2: east, bit 1: south, bit 0: west
     bool explored;
     bool searched;
 } Cell;
@@ -51,9 +51,12 @@ typedef struct
     float dist; // Distance since last cell-mid-point
     Cell maze[MAZE_SIZE][MAZE_SIZE];
     bool stepReady; // Ready to perform an explore step (pointing straight to next enqueued cell)
+    bool finalGoalActive;
     bool drivingToGoal;
     bool finishedExploring;
     Path pathToNextPos;
+    Path finalPathToGoal;
+    Pos finalGoal;
     uint8_t stepIndex;
     float totalDistPrev;
     GlobalDirection dir;
@@ -75,7 +78,6 @@ Pos explore_makePos(uint8_t x, uint8_t y);
 GlobalDirection explore_setNeighbor(LocalDirection noWall);
 bool explore_enqueueNeighborInDirection(GlobalDirection dir);
 Path explore_getPathToPos(Pos newPos);
-uint8_t explore_recursiveSearch(GlobalDirection *dirPtr, uint8_t pathLength, Pos start, Pos goal);
 NeighborCells explore_getNeighborCells(Pos currentPos, uint8_t neighbors);
 LocalDirection explore_getTurnDirection(GlobalDirection currentDir, GlobalDirection nextDir);
 Pos explore_getPosFromDirection(GlobalDirection dir);
