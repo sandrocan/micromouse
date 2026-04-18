@@ -1,10 +1,9 @@
 /*  FILE: main.c
- *  Authors: 
- *  
+ *  Authors:
+ *
  *  Micromouse
  *  Wintersemester 2025
  */
-
 
 #ifndef IOCONFIG_H
 #define IOCONFIG_H
@@ -31,26 +30,26 @@
 
 #define UART_RX PORTBbits.RB3
 
-
 #define ENC_A_RIGHT PORTCbits.RC8
 #define ENC_B_RIGHT PORTCbits.RC9
 
 #define ENC_A_LEFT PORTCbits.RC0
 #define ENC_B_LEFT PORTCbits.RC1
 
-//defined in dma.h
-//#define SENSOR_RIGHT PORTAbits.RA0
-//#define SENSOR_MIDDLE PORTAbits.RA1
-//#define SENSOR_LEFT PORTCbits.RC2
+// defined in dma.h
+// #define SENSOR_RIGHT PORTAbits.RA0
+// #define SENSOR_MIDDLE PORTAbits.RA1
+// #define SENSOR_LEFT PORTCbits.RC2
 
 #define SELFDESTRUCT !PORTBbits.RB8
 
-
-//#define EXTRA7 LATCbits.LATC7
+// #define EXTRA7 LATCbits.LATC7
 #define EXTRA5 LATBbits.LATB10
 #define EXTRA3 LATBbits.LATB11
-//#define EXTRA1 LATBbits.LATB13
+// #define EXTRA1 LATBbits.LATB13
+
+#define BUZZER LATCbits.LATC7
 
 void setupIO();
 
-#endif  /* IOCONFIG_H */
+#endif /* IOCONFIG_H */

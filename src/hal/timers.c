@@ -10,6 +10,101 @@
 #include "explore.h"
 #include "selfdestruct.h"
 
+#define TIMER2_ISR_HZ 4000U
+#define MELODY_TICKS(ms) ((uint16_t)((ms) * 4U))
+
+typedef struct
+{
+    uint16_t frequencyHz;
+    uint16_t durationTicks;
+} MelodyNote;
+
+static const MelodyNote goalMelody[] = {
+    {1047U, MELODY_TICKS(120U)}, // C6
+    {1319U, MELODY_TICKS(120U)}, // E6
+    {1568U, MELODY_TICKS(140U)}, // G6
+    {1319U, MELODY_TICKS(120U)}, // E6
+    {1047U, MELODY_TICKS(120U)}, // C6
+    {1319U, MELODY_TICKS(120U)}, // E6
+    {1568U, MELODY_TICKS(180U)}, // G6
+    {0U, MELODY_TICKS(70U)},     // short pause
+    {880U, MELODY_TICKS(120U)},  // A5
+    {1047U, MELODY_TICKS(120U)}, // C6
+    {1319U, MELODY_TICKS(160U)}, // E6
+    {1568U, MELODY_TICKS(260U)}, // G6 hold
+};
+
+static bool buzzerOutputHigh = false;
+static bool goalMelodyActive = false;
+static uint8_t goalMelodyIndex = 0;
+static uint16_t goalMelodyTicksRemaining = 0;
+static uint16_t buzzerPhaseAccumulator = 0;
+
+static void setBuzzerOutput(bool enabled)
+{
+    activateBuzzer(enabled ? 1.0f : 0.0f);
+    buzzerOutputHigh = enabled;
+}
+
+static void loadGoalMelodyNote(uint8_t noteIndex)
+{
+    if (noteIndex >= (sizeof(goalMelody) / sizeof(goalMelody[0])))
+    {
+        goalMelodyActive = false;
+        setBuzzerOutput(false);
+        return;
+    }
+
+    goalMelodyIndex = noteIndex;
+    goalMelodyTicksRemaining = goalMelody[noteIndex].durationTicks;
+    buzzerPhaseAccumulator = 0;
+    setBuzzerOutput(false);
+}
+
+void startGoalMelody(void)
+{
+    goalMelodyActive = true;
+    loadGoalMelodyNote(0);
+}
+
+static void updateGoalMelody(void)
+{
+    const MelodyNote *note;
+
+    if (!goalMelodyActive)
+    {
+        setBuzzerOutput(false);
+        return;
+    }
+
+    note = &goalMelody[goalMelodyIndex];
+
+    if (note->frequencyHz == 0U)
+    {
+        setBuzzerOutput(false);
+    }
+    else
+    {
+        buzzerPhaseAccumulator += (uint16_t)(2U * note->frequencyHz);
+
+        if (buzzerPhaseAccumulator >= TIMER2_ISR_HZ)
+        {
+            buzzerPhaseAccumulator -= TIMER2_ISR_HZ;
+            setBuzzerOutput(!buzzerOutputHigh);
+        }
+    }
+
+    if (goalMelodyTicksRemaining > 0U)
+    {
+        goalMelodyTicksRemaining--;
+    }
+
+    if (goalMelodyTicksRemaining == 0U)
+    {
+        loadGoalMelodyNote((uint8_t)(goalMelodyIndex + 1U));
+    }
+}
+
 static void updateLEDGreenSine(void)
 {
     static float phase = 0.0f;
@@ -91,7 +186,7 @@ void initTimer2ms(float timeinms)
 {
     T2CON = 0; // Turn all bits off
 
-    // Fcyc = 80.0MHz
+    // Fcyc = 40.0MHz
     // tcyc = 12.5ns
 
     // period = prescaler/Fcyc
@@ -107,9 +202,13 @@ void initTimer2ms(float timeinms)
     float tmax_8 = 5.50;
     float tmax_64 = 51.20;
     float tmax_256 = 208.50;
-    int prescaler = 0;
+    int prescaler = 1;
 
-    if (timeinms <= tmax_8)
+    if (timeinms <= 1)
+    {
+        T2CONbits.TCKPS = 0b00;
+    }
+    else if (timeinms <= tmax_8)
     {
         T2CONbits.TCKPS = 0b01;
         prescaler = 8;
@@ -159,13 +258,7 @@ void __attribute__((__interrupt__, auto_psv)) _T1Interrupt(void)
     // snprintf(buf, sizeof(buf), "Sensor = %d\n", val);
     // writeUART(buf);
     updateController();
-}
 
-void __attribute__((__interrupt__, auto_psv)) _T2Interrupt(void)
-{
-    IFS0bits.T2IF = 0; // reset Timer 2 interrupt flag
-
-    // Blaulicht: toggle RB10/RB11 (complementary) at ~3 Hz
     static int blaulicht_cnt = 0;
     blaulicht_cnt++;
     if (blaulicht_cnt >= 15)
@@ -179,5 +272,15 @@ void __attribute__((__interrupt__, auto_psv)) _T2Interrupt(void)
         {
             P1DC3 = 0; // PWM1H3 (RB10) LOW, PWM1L3 (RB11) HIGH
         }
+    }
+}
+
+void __attribute__((__interrupt__, auto_psv)) _T2Interrupt(void)
+{
+    IFS0bits.T2IF = 0; // reset Timer 2 interrupt flag
+
+    if (goalMelodyActive)
+    {
+        updateGoalMelody();
     }
 }

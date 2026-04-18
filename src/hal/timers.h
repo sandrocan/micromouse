@@ -1,6 +1,6 @@
 /*  FILE: timers.c
- *  Authors: 
- *  
+ *  Authors:
+ *
  *  Micromouse
  *  Wintersemester 2025
  */
@@ -14,5 +14,6 @@ void initTimer1ms(float timeinms);
 void startTimer1(void);
 void initTimer2ms(float timeinms);
 void startTimer2(void);
+void startGoalMelody(void);
 
 #endif /* TIMERS_H */

@@ -1,6 +1,6 @@
 /*  FILE: pwm.c
- *  Authors: 
- *  
+ *  Authors:
+ *
  *  Micromouse
  *  Wintersemester 2025
  */
@@ -17,5 +17,6 @@ void setDCMotorLeft(float dc);
 void setDCMotorRight(float dc);
 void setDCLEDGreen(float dc);
 void setDCExtra(float dc);
+void activateBuzzer(float dc);
 
 #endif /* PWM_H */

@@ -80,7 +80,7 @@ int main()
   setupUART();
   initBluetooth();
   initTimer1ms(10);
-  initTimer2ms(10);
+  initTimer2ms(0.25);
   setupPWM();
   initMotors();
   initEncoders();

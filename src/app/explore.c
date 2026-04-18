@@ -3,6 +3,7 @@
 #include "adc.h"
 #include "controller.h"
 #include "motors.h"
+#include "timers.h"
 #include "uart.h"
 
 #include <stdio.h>
@@ -214,6 +215,7 @@ void explore_step(void)
                 if (state.pos.x == state.finalGoal.x && state.pos.y == state.finalGoal.y)
                 {
                     writeUART("\n######## Final goal reached! ########\n");
+                    startGoalMelody();
                 }
                 else
                 {
