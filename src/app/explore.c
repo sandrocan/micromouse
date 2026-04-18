@@ -253,13 +253,13 @@ void explore_step(void)
         if (!state.drivingToGoal)
         {
             state.pathToNextPos = explore_getPathToPos(state.queue.data[state.queue.head]);
+            nextDir = state.pathToNextPos.directions[0];
 
             // Only switch into path-following mode if the next queued cell is not directly adjacent.
             if (state.pathToNextPos.stepCount > 1)
             {
-                state.stepIndex = 0;
+                state.stepIndex = 1;
                 state.drivingToGoal = true;
-                nextDir = state.pathToNextPos.directions[state.stepIndex++];
             }
 
             writeUART("Search path: ");
@@ -451,7 +451,8 @@ bool explore_enqueueNeighborInDirection(GlobalDirection freeDir)
         return false;
     }
 
-    if (!state.maze[newPos.x][newPos.y].explored)
+    if (!queue_contains(&state.queue, newPos) &&
+        !state.maze[newPos.x][newPos.y].explored)
     {
         char buf[40];
         snprintf(buf, sizeof(buf), "Added new pos to queue: X=%d Y= %d\n", newPos.x, newPos.y);

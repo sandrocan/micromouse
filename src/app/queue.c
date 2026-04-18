@@ -17,6 +17,20 @@ bool queue_is_full(const volatile PosQueue *q)
     return q->count == QUEUE_CAPACITY;
 }
 
+bool queue_contains(const volatile PosQueue *q, Pos value)
+{
+    for (uint8_t i = 0; i < q->count; ++i)
+    {
+        uint8_t index = (q->head + i) % QUEUE_CAPACITY;
+        if (q->data[index].x == value.x && q->data[index].y == value.y)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool queue_push(volatile PosQueue *q, Pos value)
 {
     if (queue_is_full(q))

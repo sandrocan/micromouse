@@ -23,6 +23,7 @@ typedef struct
 void queue_init(volatile PosQueue *q);
 bool queue_is_empty(const volatile PosQueue *q);
 bool queue_is_full(const volatile PosQueue *q);
+bool queue_contains(const volatile PosQueue *q, Pos value);
 bool queue_push(volatile PosQueue *q, Pos value);
 bool queue_pop(volatile PosQueue *q, volatile Pos *value);
 
