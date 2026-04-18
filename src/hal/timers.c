@@ -5,40 +5,49 @@
 #include "motors.h"
 #include "uart.h"
 #include "pwm.h"
+
+#include <stdbool.h>
+#include <stdint.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
+
 #include "explore.h"
 #include "selfdestruct.h"
 
 #define TIMER2_ISR_HZ 4000U
-#define MELODY_TICKS(ms) ((uint16_t)((ms) * 4U))
+
+enum
+{
+    MELODY_TICKS_PER_MS = TIMER2_ISR_HZ / 1000U
+};
 
 typedef struct
 {
-    uint16_t frequencyHz;
-    uint16_t durationTicks;
+    unsigned int frequencyHz;
+    unsigned int durationTicks;
 } MelodyNote;
 
 static const MelodyNote goalMelody[] = {
-    {1047U, MELODY_TICKS(120U)}, // C6
-    {1319U, MELODY_TICKS(120U)}, // E6
-    {1568U, MELODY_TICKS(140U)}, // G6
-    {1319U, MELODY_TICKS(120U)}, // E6
-    {1047U, MELODY_TICKS(120U)}, // C6
-    {1319U, MELODY_TICKS(120U)}, // E6
-    {1568U, MELODY_TICKS(180U)}, // G6
-    {0U, MELODY_TICKS(70U)},     // short pause
-    {880U, MELODY_TICKS(120U)},  // A5
-    {1047U, MELODY_TICKS(120U)}, // C6
-    {1319U, MELODY_TICKS(160U)}, // E6
-    {1568U, MELODY_TICKS(260U)}, // G6 hold
+    {1047U, 120U * MELODY_TICKS_PER_MS}, // C6
+    {1319U, 120U * MELODY_TICKS_PER_MS}, // E6
+    {1568U, 140U * MELODY_TICKS_PER_MS}, // G6
+    {1319U, 120U * MELODY_TICKS_PER_MS}, // E6
+    {1047U, 120U * MELODY_TICKS_PER_MS}, // C6
+    {1319U, 120U * MELODY_TICKS_PER_MS}, // E6
+    {1568U, 180U * MELODY_TICKS_PER_MS}, // G6
+    {0U, 70U * MELODY_TICKS_PER_MS},     // short pause
+    {880U, 120U * MELODY_TICKS_PER_MS},  // A5
+    {1047U, 120U * MELODY_TICKS_PER_MS}, // C6
+    {1319U, 160U * MELODY_TICKS_PER_MS}, // E6
+    {1568U, 260U * MELODY_TICKS_PER_MS}, // G6 hold
 };
 
 static bool buzzerOutputHigh = false;
 static bool goalMelodyActive = false;
 static uint8_t goalMelodyIndex = 0;
-static uint16_t goalMelodyTicksRemaining = 0;
-static uint16_t buzzerPhaseAccumulator = 0;
+static unsigned int goalMelodyTicksRemaining = 0;
+static unsigned int buzzerPhaseAccumulator = 0;
 
 static void setBuzzerOutput(bool enabled)
 {
@@ -85,7 +94,7 @@ static void updateGoalMelody(void)
     }
     else
     {
-        buzzerPhaseAccumulator += (uint16_t)(2U * note->frequencyHz);
+        buzzerPhaseAccumulator += (unsigned int)(2U * note->frequencyHz);
 
         if (buzzerPhaseAccumulator >= TIMER2_ISR_HZ)
         {
