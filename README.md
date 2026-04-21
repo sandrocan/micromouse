@@ -4,7 +4,6 @@ Custom autonomous Micromouse robot developed as a university team project in emb
 
 <p align="center">
   <img src="images/robot_and_maze.jpeg" width="48%" alt="Micromouse robot inside the test maze">
-  <img src="images/board.png" width="48%" alt="Assembled Micromouse PCB">
 </p>
 
 ## Overview
@@ -73,6 +72,7 @@ Those limitations are documented honestly in the report and helped shape the fin
   <img src="images/perspective.jpeg" width="31%" alt="Assembled Micromouse robot">
   <img src="images/Front.jpeg" width="31%" alt="Front view showing sensor arrangement">
   <img src="images/maze.jpeg" width="31%" alt="Reduced project maze">
+    <img src="images/board.png" width="48%" alt="Assembled Micromouse PCB">
 </p>
 
 ## Repository Layout
@@ -104,25 +104,5 @@ Project metadata is included in [.vscode/micromouse.mplab.json](.vscode/micromou
 - [src/drivers/motors.c](src/drivers/motors.c) handles encoder reading, speed estimation, and H-bridge control.
 - [src/hal/adc.c](src/hal/adc.c) and [src/hal/dma.c](src/hal/dma.c) provide continuous sensor acquisition with low CPU overhead.
 
-## Report
-
-The full engineering write-up is in the [report](report/) folder and includes:
-
-- conceptual design and trade-offs
-- hardware and software design
-- controller design and PI tuning
-- testing and results
-- discussion of technical limitations
-- appendix material such as the schematic and BOM
-
-## Why This Project Matters
-
-This project is a good example of end-to-end engineering work rather than isolated coding:
-
-- embedded firmware development
-- control-system design and tuning
-- custom PCB integration
-- sensor-based robotics
-- structured technical documentation
 
 It is also a project where the trade-offs are visible. The final robot is not a competition-optimised Micromouse, but it is a complete autonomous system built from the ground up and evaluated honestly.
