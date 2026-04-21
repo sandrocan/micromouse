@@ -1,0 +1,123 @@
+\section{PI Tuning Summary}
+
+Empirical tuning sequence for the inner PI wheel-speed controller. The table summarizes the qualitative observations obtained during incremental gain adjustment.
+\begin{table*}[ht]
+\centering
+\label{tab:pi_tuning_summary}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{c c c c X X}
+\hline
+\textbf{Wheel} & \textbf{$K_P$} & \textbf{$K_I$} & \textbf{Test Sequence [mm/s]} & \textbf{Observed Behavior} & \textbf{Assessment} \\
+\hline
+\multicolumn{6}{l}{\textit{Coarse proportional tuning (right wheel, free-spinning)}} \\
+\hline
+Right & 0.0 & 0.0 & 0 / 500 & No visible control action; the motor response followed the command without meaningful regulation. & Unsuitable baseline \\
+Right & 0.2 & 0.0 & 0 / 500 & No relevant improvement over the baseline case; the controller effect remained negligible. & $K_P$ too low \\
+Right & 0.5 & 0.0 & 0 / 500 & Still no effective regulation; the commanded speed was not tracked sufficiently. & $K_P$ too low \\
+Right & 1.0 & 0.0 & 0 / 500 & First visible regulating effect; however, the measured speed still remained noticeably offset from the target. & Improved, but insufficient \\
+Right & 1.3 & 0.0 & 0 / 500 & Regulation became more apparent and more stable, but the target velocity was still not reached accurately enough. & Close, but still off target \\
+Right & 1.4 & 0.0 & 0 / 500 & Stable proportional response with acceptable speed tracking and no pronounced oscillation. & Selected proportional gain \\
+Right & 1.5 & 0.0 & 0 / 500 & Clearly visible stuttering appeared during operation, indicating the onset of unstable behavior. & $K_P$ too high \\
+Right & 2.0 & 0.0 & 0 / 500 & Strong stuttering and highly irregular drive behavior. & Rejected \\
+\hline
+\multicolumn{6}{l}{\textit{Integral tuning after proportional gain selection (right wheel, free-spinning)}} \\
+\hline
+Right & 1.4 & 0.0 & 0 / 500 / 700 / 300 / 0 & Stable proportional control, but remaining steady-state deviation was still visible at different command levels. & Basis for integral tuning \\
+Right & 1.4 & 1.0 & 0 / 500 / 700 / 300 / 0 & No significant change compared with the P-only case. & $K_I$ too low \\
+Right & 1.4 & 2.0 & 0 / 500 / 700 / 300 / 0 & Only minor improvement; the effect of the integral term remained limited. & $K_I$ too low \\
+Right & 1.4 & 5.0 & 0 / 500 / 700 / 300 / 0 & Slightly improved correction of offset, but no major change in overall behavior. & Still below optimum \\
+Right & 1.4 & 10.0 & 0 / 500 / 700 / 300 / 0 & Stable response across the speed sequence, though the additional benefit remained moderate. & Acceptable, but not optimal \\
+Right & 1.4 & 15.0 & 0 / 500 / 700 / 300 / 0 & Noticeable improvement in target tracking while maintaining stable behavior. & Promising range \\
+Right & 1.4 & 16.0 & 0 / 500 / 700 / 300 / 0 & Good compromise between tracking accuracy and smooth response over the full command sequence. & Final parameter set \\
+Right & 1.4 & 17.0 & 0 / 500 / 700 / 300 / 0 & Stuttering began to reappear, indicating that the integral action had become too aggressive. & Slightly too high \\
+Right & 1.4 & 20.0 & 0 / 500 / 700 / 300 / 0 & Strong stuttering and visibly unstable drive behavior. & Rejected \\
+\hline
+\multicolumn{6}{l}{\textit{Transferred tuning and confirmation on left wheel}} \\
+\hline
+Left & 1.0 & 10.0 & 0 / 500 / 700 / 300 / 0 & Initial transferred starting point based on the tuning experience from the right wheel; regulation was already functional but not yet optimal. & Reasonable starting estimate \\
+Left & 1.2 & 10.0 & 0 / 500 / 700 / 300 / 0 & Stable response, but tracking remained somewhat less precise than desired. & Improved, but still conservative \\
+Left & 1.4 & 10.0 & 0 / 500 / 700 / 300 / 0 & Good proportional response with similar behavior to the right wheel before final integral tuning. & Suitable proportional region \\
+Left & 1.4 & 15.0 & 0 / 500 / 700 / 300 / 0 & Noticeable improvement in target tracking while retaining stable behavior. & Near final range \\
+Left & 1.4 & 16.0 & 0 / 500 / 700 / 300 / 0 & Left wheel showed similarly acceptable behavior and converged quickly to the same usable parameter set as the right wheel. & Confirmed common gains \\
+Left & 1.4 & 17.0 & 0 / 500 / 700 / 300 / 0 & Slight onset of stuttering comparable to the right-wheel observations. & Slightly too high \\
+\hline
+\end{tabularx}
+\end{table*}
+
+\clearpage
+\section{PCB Schematic}
+
+The complete circuit schematic of the Micromouse electronics is included here as supporting hardware documentation. It complements the hardware design chapter by showing the detailed electrical connections between the controller, power supply, sensors, motor driver, communication interface, and auxiliary components.
+
+\vspace{2.5\baselineskip}
+\begin{center}
+    \rotatebox{90}{%
+        \begin{minipage}{0.80\textheight}
+            \centering
+            \includegraphics[width=\linewidth,height=0.88\textwidth,keepaspectratio]{images/schematic.png}
+
+            \vspace{0.6em}
+            \refstepcounter{figure}\label{fig:appendix_schematic}
+            \small \textbf{Figure \thefigure.} Schematic of the Micromouse electronics.
+        \end{minipage}}
+\end{center}
+
+\clearpage
+\section{Bill of Materials}
+
+The bill of materials is summarized here in a single rotated table for improved readability. This keeps the component summary and procurement information together while giving the long manufacturer and part-number fields more horizontal space.
+
+\begin{center}
+    \scriptsize
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.05}
+    \refstepcounter{table}\label{tab:appendix_bom}
+    \textbf{Table \thetable.} Summary of the bill of materials for the Micromouse PCB.
+
+    \vspace{0.6em}
+    \rotatebox{90}{%
+        \begin{minipage}{0.80\textheight}
+            \centering
+            \begin{tabularx}{\linewidth}{
+                >{\raggedright\arraybackslash}p{0.23\linewidth}
+                >{\centering\arraybackslash}p{0.05\linewidth}
+                >{\raggedright\arraybackslash}p{0.18\linewidth}
+                >{\raggedright\arraybackslash}p{0.12\linewidth}
+                >{\raggedright\arraybackslash}p{0.14\linewidth}
+                >{\raggedright\arraybackslash}X}
+                \hline
+                \textbf{Reference} & \textbf{Qty} & \textbf{Description} & \textbf{Value} & \textbf{Manufacturer} & \textbf{Part Number} \\
+                \hline
+                PCB & 1 & PCB board & Board & --- & --- \\
+                C1, C5, C13, C14 & 4 & Capacitor - Generic & 10uF & TDK & CGA4J1X7R0J106K125AC \\
+                C2, C3, C18, C19 & 4 & Capacitor - Generic & 15pF & KEMET & C0805C150J5HACTU \\
+                C4 & 1 & Capacitor - Generic & 0.33uF & --- & --- \\
+                C6, C7, C8, C9, C10, C11, C12, C20 & 8 & Capacitor - Generic & 100nF & KEMET & C0805C101J5GAC7800 \\
+                C15, C16, C17 & 3 & Capacitor - Generic & 0.1uF & KEMET & C0805C101J5GAC7800 \\
+                D1, D4 & 2 & Green LED - Generic & CHIP-ROUND-G\_0805 & Kingbright & APT2012LZGCK \\
+                D2 & 1 & Blue LED - Generic & CHIP-ROUND-B\_0805 & Kingbright & APT2012LVBC-D \\
+                D3 & 1 & Red LED - Generic & CHIP-ROUND-R\_0805 & Kingbright & APT2012LSECK-J3-PRV \\
+                IC1 & 1 & 16-bit dsPIC microcontroller & DSPIC33FJ128MC804-E\_PT & Microchip Technology & dsPIC33FJ128MC804-E/PT \\
+                IC2 & 1 & Dual H-bridge motor driver & TB6612FNG & Toshiba & TB6612FNGC8EL \\
+                IC3 & 1 & Bluetooth Low Energy module & RN4871-V\_RM140 & Microchip Technology & RN4871-V/RM140 \\
+                ICSP & 1 & ICSP programming connector & PIC\_ICSP\_6\_PIN & Molex & 22-23-2061 \\
+                JP1, S1, S2, S3 & 4 & Pin header & 1X03 & --- & --- \\
+                MANFRED & 1 & Pin header & PINHD-2X4 & --- & --- \\
+                MOTORA, MOTORB & 2 & Pin header & 2X03 & --- & --- \\
+                OSC & 1 & 16MHz crystal & 16MHz & Abracon & ABL-16.000MHz-B4Y \\
+                POWER & 1 & Power switch & CS12ANW03 & NKK Switches & CS12ANW03 \\
+                Q1 & 1 & XT60 power connector & XT60\_YELLOW & AMASS & XT60PB-M \\
+                R1 & 1 & Resistor & 47k & Vishay Beyschlag & MCU08050C4702FP500 \\
+                R2, R3, R4 & 3 & Resistor & 330 & Vishay & TNPW0805330RBYEA \\
+                R5 & 1 & Resistor & 10k & Bourns & CRT0805-FZ-1002ELF \\
+                R6 & 1 & Resistor & 4,7k & Vishay Beyschlag & MCU08050C4701FP500 \\
+                R7, R8 & 2 & Resistor & 10 & TE Connectivity & CPF0805B10RE \\
+                R9 & 1 & Resistor & 820 & Panasonic & ERA-6VEB8200V \\
+                RST, SELFDESTRUCT & 2 & Tactile switch & SWITCH\_MOMENTARY & C\&K & PTS647SN70SMTR2N-LFS \\
+                UART & 1 & XH connector top entry - 4POS & B4B-XH-A & JST & B4B-XH-A(LF)(SN) \\
+                VR1 & 1 & 5V voltage regulator & LM7805\_SOT223 & Texas Instruments & LM7805MP/NOPB \\
+                VR2 & 1 & 3.3V voltage regulator & LD1117\_SOT223 & STMicroelectronics & LD1117AS33TR \\
+                \hline
+            \end{tabularx}
+        \end{minipage}}
+\end{center}

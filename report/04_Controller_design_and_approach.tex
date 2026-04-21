@@ -1,0 +1,167 @@
+\section{Controller Design}
+
+Reliable motion control is a central requirement for autonomous maze navigation, since the robot must move accurately and repeatably in a constrained environment. In practice, open-loop motor actuation is not sufficient, because wheel slip, drive asymmetries, and other disturbances can cause deviations from the intended path. For this reason, the controller was implemented as a cascaded architecture consisting of an inner velocity-control loop and an outer correction layer for maintaining straight motion. The inner layer regulates the wheel velocities based on encoder feedback, while the outer layer applies an additional trim-based correction to improve the trajectory during straight driving. In addition to straight-line motion, the controller design also includes dedicated turning functions required for maze navigation.
+
+\subsection{PI Control for Drive Speed}
+
+The purpose of the inner control loop is to regulate the wheel velocities during straight driving and thereby provide accurate and repeatable motion. Instead of commanding the motors in open loop, the system controls the wheel speeds explicitly, which improves robustness against disturbances and variations in motor behavior. Since the robot is driven by two separate motors that are not perfectly identical, separate speed controllers for the left and right wheel are required \cite{mueller2014maschinen}. This is not merely convenient, but necessary for balanced forward motion.
+%pages 58 to 61
+
+The measured variable of each controller is the linear wheel velocity, which is derived from the corresponding integrated quadrature encoder \cite{datasheet_motor}. For each wheel, the encoder count is accumulated continuously, and the count increment over one sampling interval is used to estimate the rotational motion of the wheel. Based on the known number of encoder counts per wheel revolution and the wheel circumference, the linear velocity can be calculated as
+
+\begin{equation}
+v = \frac{\Delta N}{N_{\mathrm{rev}}} \cdot \frac{\pi d}{T_s},
+\end{equation}
+
+where $\Delta N$ denotes the encoder count difference during one sampling interval, $N_{\mathrm{rev}}$ is the number of counts per wheel revolution, $d$ is the wheel diameter, and $T_s$ is the sampling time. This estimated wheel velocity serves as the feedback signal for the controller.
+
+The wheel velocity is compared with a desired target velocity, and the resulting control error is processed by a proportional-integral controller. The proportional part provides an immediate response to the current speed error, while the integral part compensates persistent deviations over time and reduces steady-state error \cite{schroeder2015antriebe}. In the implemented controller, the integral contribution is additionally bounded in order to limit windup effects and prevent excessive output accumulation.
+
+For the final implementation, the wheel-speed controller was operated with the empirical parameter set $K_P = 1.4$ and $K_I = 16.0$ at a sampling time of $T_s = 0.01\,\mathrm{s}$. These values were not derived from a formal plant model, but were selected experimentally during commissioning as the best compromise between visible speed tracking, stable response, and limited stuttering. A summary of the gain adjustment process is provided in Appendix~A.
+
+Figure~\ref{fig:pi_controller_scheme} illustrates the standard feedback structure of the implemented wheel-speed controller for one wheel. The same principle is applied independently to both motors.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\columnwidth}{!}{%
+    \begin{tikzpicture}[
+        >=Latex,
+        block/.style={draw, rectangle, minimum height=7mm, minimum width=10mm, align=center},
+        smallblock/.style={draw, rectangle, minimum size=7mm, align=center},
+        sum/.style={draw, circle, inner sep=0pt, minimum size=4mm}
+    ]
+
+    % Main input and error summation
+    \coordinate (input) at (0,0);
+    \node[sum] (sum1) at (0.9,0) {};
+    \coordinate (branch) at (1.8,0);
+
+    % P and I branches
+    \node[block] (kp) at (3.0,0.9) {$K_P$};
+    \node[block] (ki) at (3.0,-0.9) {$K_I$};
+    \node[block] (int) at (4.3,-0.9) {$\dfrac{1}{s}$};
+
+    % Summation of P and I parts
+    \node[sum] (sum2) at (5.7,0) {};
+
+    % Plant and feedback
+    \node[smallblock] (motor) at (7.0,0) {};
+    \node[above=1mm of motor] {Motor};
+    \node[smallblock] (encoder) at (8.6,0) {};
+    \node[above=1mm of encoder] {Encoder};
+
+    % Input and first sum
+    \draw[->] (input) -- node[above] {$v_{\mathrm{target}}$} (sum1);
+    \draw[->] (sum1) -- node[above] {$e(t)$} (branch);
+
+    % Branching to P and I
+    \draw[->] (branch) |- (kp);
+    \draw[->] (branch) |- (ki);
+
+    % P path to second summing junction
+    \draw[->] (kp.east) -| (sum2.north);
+
+    % I path to integrator to second summing junction
+    \draw[->] (ki) -- (int);
+    \draw[->] (int.east) -| (sum2.south);
+
+    % Forward path
+    \draw[->] (sum2) -- node[above] {$u(t)$} (motor);
+    \draw[->] (motor) -- node[above] {$v(t)$} (encoder);
+
+    % Feedback path
+    \draw[->] (encoder.south) |- ++(0,-1.2) -| (sum1.south);
+
+    % Minus sign at feedback input
+    \node[font=\scriptsize, right=0.5mm of sum1.south] {$-$};
+
+    \end{tikzpicture}%
+    }
+    \caption{Block diagram of the inner PI wheel-speed controller.}
+    \label{fig:pi_controller_scheme}
+\end{figure}
+
+This inner wheel-speed regulation forms the basis of the overall cascaded drive controller and provides the controlled input on top of which the outer trajectory-correction layer operates.
+
+\subsection{Trajectory Correction by Cascaded Trim Control}
+
+While wheel-speed regulation ensures that both motors track their velocity references, it does not by itself guarantee reliable straight motion in the maze. In addition to stable wheel velocities, the robot must maintain a consistent trajectory within the corridor and ideally follow the middle line between the surrounding walls. This additional requirement motivated the implementation of an outer correction layer.
+
+In practice, several effects were observed that caused the robot to deviate from its intended path. These included unequal motor behavior, wheel slip on the maze surface, and the accumulation of small trajectory errors during straight motion. Without additional correction, such deviations would eventually cause the robot to drift into a wall, which would compromise the execution of the overall maze-solving task. Since reliable straight motion is a prerequisite for any higher-level navigation strategy, an additional correction mechanism was required.
+
+To address this, the drive controller was extended into a cascaded structure. The inner PI loop regulates the wheel velocities, while an outer controller modifies the wheel commands in order to stabilize the robot along a straight trajectory. The interaction of the inner velocity loop and the outer trim controller is shown in Fig.~\ref{fig:cascaded_trim_controller}. The outer layer uses the left and right side infrared sensor readings as correction inputs\cite{datasheet_sensor}. These signals are raw 12-bit sensor values rather than metric distance measurements. In theory, the values lie in the range from 0 to 4095, although in practice they reach only up to approximately 2300 when the sensor is as close to the wall as possible.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\columnwidth}{!}{%
+    \begin{tikzpicture}[
+        >=Latex,
+        block/.style={draw, rectangle, minimum height=7mm, minimum width=10mm, align=center},
+        smallblock/.style={draw, rectangle, minimum size=7mm, align=center},
+        sum/.style={draw, circle, inner sep=0pt, minimum size=4mm}
+    ]
+
+    % Inner PI loop
+    \coordinate (vref) at (0,0);
+    \node[sum] (sum1) at (1.0,0) {};
+    \node[block] (pi) at (2.5,0) {PI};
+    \node[sum] (sum2) at (4.2,0) {};
+    \node[smallblock] (motor) at (5.8,0) {};
+    \node[above=1mm of motor] {Motor};
+    \node[smallblock] (encoder) at (7.5,0) {};
+    \node[above=1mm of encoder] {Encoder};
+
+    % Outer trim loop
+    \coordinate (sref) at (0,1.2);
+    \node[sum] (sum3) at (1.0,1.2) {};
+    \node[block] (p) at (2.5,1.2) {P};
+
+    % Inner loop connections
+    \draw[->] (vref) -- node[above] {$v_{\mathrm{target}}$} (sum1);
+    \draw[->] (sum1) -- node[above] {$e_v(t)$} (pi);
+    \draw[->] (pi) -- (sum2);
+    \draw[->] (sum2) -- node[above] {$u(t)$} (motor);
+    \draw[->] (motor) -- node[above] {$v(t)$} (encoder);
+    \draw[->] (encoder.south) |- ++(0,-0.8) -| (sum1.south);
+
+    % Outer loop connections
+    \draw[->] (sref) -- node[above] {$s_{\mathrm{target}}$} (sum3);
+    \draw[->] (sum3) -- node[above] {$e_s(t)$} (p);
+    \draw[->] (p.east) -- ++(0.8,0) node[above] {Trim} -| (sum2.north);
+
+    % Sensor value as external input
+    \coordinate (smeas) at (1.0,2.3);
+    \draw[->] (smeas) -- (sum3);
+    \node at (1.42,2.02) {$s(t)$};
+
+    % Minus signs
+    \node[font=\scriptsize, right=0.5mm of sum1.south] {$-$};
+    \node[font=\scriptsize, right=0.5mm of sum3.north] {$-$};
+
+    \end{tikzpicture}%
+    }
+    \caption{Generalized cascaded controller structure with inner PI speed control and outer trim correction.}
+    \label{fig:cascaded_trim_controller}
+\end{figure}
+
+\subsection{Signal Conditioning and Slew-Limited Actuation}
+
+In addition to the cascaded controller structure described above, several practical signal-conditioning measures were introduced in the implementation in order to improve robustness and smoothness on the physical robot. While the inner PI controller and the outer trim-based correction define the main control logic, their direct application on real hardware can still lead to undesirable behaviour if noisy feedback signals or abrupt command changes are not handled appropriately \cite{vaseghi1996signal}. For this reason, the controller was extended by filtering and output-shaping mechanisms that improve the stability of the overall drive behaviour.
+
+A first measure concerns the encoder-based wheel-speed feedback used by the inner PI loop. Although the wheel velocity is computed from encoder counts over a fixed sampling interval, the resulting estimate may still fluctuate due to quantisation effects and small variations between successive samples. To reduce the influence of such fluctuations, the measured speed is passed through a low-pass filter before it is used for control. This produces a smoother feedback signal and prevents the PI controller from reacting too aggressively to short-term variations in the estimated wheel velocity \cite{schroeder2015antriebe}.
+% page 278
+
+A similar approach is used for the trim-based correction generated by the outer control layer. Since the trim signal is derived from side sensor readings, it may change abruptly when the measured wall position varies from one control step to the next. Applying this correction directly to the wheel command would result in sudden lateral adjustments and unnecessarily nervous motion. Therefore, the trim signal is also low-pass filtered before it is added to the inner controller output. This leads to a smoother trajectory correction and improves the stability of straight driving within the maze corridors.
+
+After the proportional-integral action and the trim correction have been combined, the resulting motor command is further constrained to the admissible actuator range. In the implementation, the normalized command is limited to the interval from $-1$ to $1$, which reflects the valid operating range of the motor interface. This saturation prevents invalid or excessively large actuation requests and ensures that the controller output remains compatible with the physical limitations of the drive system.
+
+Finally, the bounded controller output is not applied to the motors in an instantaneous step. Instead, the command is updated gradually by means of slew-rate limiting, such that only a limited change is allowed in each control step. This reduces abrupt transitions in motor actuation and leads to smoother acceleration and deceleration behaviour. In the context of the Micromouse robot, this is particularly useful because rapid command jumps can amplify mechanical vibrations and reduce the stability of straight driving.
+% also schröder at page 173-177
+
+Overall, these additional implementation measures do not introduce a new control layer, but they significantly improve the practical behaviour of the existing cascaded controller. By filtering noisy intermediate signals, constraining the actuator command, and limiting rapid changes in the applied motor input, the controller becomes more robust and better suited for reliable operation on the real robot.
+
+\subsection{Additional Motion Functions}
+
+In order to control turns, when a wall is encountered the \texttt{turnLeft90()}, \texttt{turnRight90()} or \texttt{turn180()} function is called. These three function similarly, as they reset the wheel speed controller to prevent the residual control action from straight driving from affecting the turn, store the current encoder reading for each motor, and set the controller into the corresponding turn mode. Whenever the controller is in turn mode and the \texttt{updateController()} function is called, the turn controller is updated. It computes the absolute encoder count difference between the current and initial values for each wheel and uses the average of both wheels as the measure of turn progress. If the target encoder reading difference needed for a 90 degree or 180 degree turn (depending on the type of turn that is being done) is not reached yet, it sets the motors to turn in opposing directions with a predefined constant speed, in an open-loop actuation (no feedback control). If the target encoder reading has been reached and the exploring is not finished yet, the internal state distance used by the exploration module is reset and the motor is set back into drive mode.
+Once the target encoder difference is reached, the motors are briefly stopped and the wheel speed controllers are reset again to ensure a clean transition. A short forward motor command is then applied to reduce mechanical oscillations and stabilize the robot before resuming motion.
+If the mouse has finished exploring, it stops.
