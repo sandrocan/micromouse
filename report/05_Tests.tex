@@ -32,7 +32,7 @@ Initially, the trim correction inside \texttt{updateWheelSpeedController()} had 
 
 In addition, the correction logic had to account for the fact that not all maze sections provide the same lateral wall structure, so trim-based corrections were applied only when a valid side-wall reference was available. To improve practical robustness, filtering and slew-rate limitation were also introduced during tuning in order to reduce noise sensitivity and abrupt actuator changes.
 
-Overall, controller testing was considered successful once the wheel-speed controller tracked commanded velocities reliably, the robot maintained sufficiently straight motion in practice, and the wall-based outer correction enabled repeated square-path execution in the maze without substantial loss of alignment. These tests established a sufficiently stable basis for later sensor-related testing and further system integration.
+Overall, controller testing was considered successful once the wheel-speed controller tracked commanded velocities reliably, the robot maintained sufficiently straight motion in practice, and the wall-based outer correction enabled repeated square-path execution in the maze without substantial loss of alignment, in both single and double wall regimes. These tests established a sufficiently stable basis for later sensor-related testing and further system integration.
 
 \subsection{Navigation Tests}
 

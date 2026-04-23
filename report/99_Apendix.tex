@@ -121,3 +121,60 @@ The bill of materials is summarized here in a single rotated table for improved 
             \end{tabularx}
         \end{minipage}}
 \end{center}
+
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+% \usepackage[table,xcdraw]{xcolor}
+% Beamer presentation requires \usepackage{colortbl} instead of \usepackage[table,xcdraw]{xcolor}
+\begin{table}[]
+\begin{tabular}{
+>{\columncolor[HTML]{B7B7B7}}c 
+>{\columncolor[HTML]{EFEFEF}}c rllll}
+Controller & Side & \multicolumn{1}{l}{\cellcolor[HTML]{FFFFFF}\#} & PIN Description & 5V & I/O (X = undef) & Usage (Name) \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 1 & SDA1 / RP9 / CN21 / PMD3 / RB9 & \cellcolor[HTML]{999999} & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 2 & \cellcolor[HTML]{D9EAD3}PWM2H1 / RP22 / CN18 / PMA1 / RC6 & \cellcolor[HTML]{999999} & O & LED\_GREEN \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 3 & \cellcolor[HTML]{D9EAD3}PWM2L1 / RP23 / CN17 / PMA0 / RC7 & \cellcolor[HTML]{999999} & X & EXTRA7 \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 4 & \cellcolor[HTML]{FCE5CD}RP24 / CN20 / PMA5 / RC8 & \cellcolor[HTML]{999999} & I & ENC\_A\_RIGHT \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 5 & \cellcolor[HTML]{FCE5CD}RP25 / CN19 / PMA6 / RC9 & \cellcolor[HTML]{999999} & I & ENC\_B\_RIGHT \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 6 & VSS &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 7 & VCAP &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 8 & \cellcolor[HTML]{D9EAD3}PGED2 / PWM1H3 / RP10 / CN16 / PMD2 / RB10 & \cellcolor[HTML]{999999} & X & EXTRA5 \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 9 & \cellcolor[HTML]{D9EAD3}PGEC2 / PWM1L3 / RP11 / CN15 / PMD1 / RB11 & \cellcolor[HTML]{999999} & X & EXTRA3 \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 10 & \cellcolor[HTML]{D9EAD3}PWM1H2 / DAC1RP / RP12 / CN14 / PMD0 / RB12 &  & O & PWM\_RIGHT \\
+\cellcolor[HTML]{B7B7B7} & \multirow{-11}{*}{\cellcolor[HTML]{EFEFEF}A (right)} & 11 & \cellcolor[HTML]{D9EAD3}PWM1L2 / DAC1RN / RP13 / CN13 / PMRD / RB13 &  & X & EXTRA1 \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 12 & TMS / PMA10 / RA10 & \cellcolor[HTML]{999999} & O & LED\_BLUE \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 13 & TCK / PMA7 / RA7 & \cellcolor[HTML]{999999} & O & LED\_RED \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 14 & \cellcolor[HTML]{D9EAD3}PWM1H1 / DAC1LP / RTCC / RP14 / CN12 / PMW &  & O & PWM\_LEFT \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 15 & \cellcolor[HTML]{D9EAD3}PWM1L1 / DAC1LN / RP15 / CN11 / PMCS1 / RB15 &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 16 & AVSS &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 17 & AVDD &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 18 & MCLR & \cellcolor[HTML]{999999} & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 19 & \cellcolor[HTML]{C9DAF8}AN0 / VREF+ / CN2 / RA0 &  & I & SENSOR\_RIGHT \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 20 & \cellcolor[HTML]{C9DAF8}AN1 / VREF- / CN3 / RA1 &  & I & SENSOR\_MIDDLE \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 21 & \cellcolor[HTML]{C9DAF8}PGED1 / AN2 / C2IN- / RP0 / CN4 / RB0 &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \multirow{-11}{*}{\cellcolor[HTML]{EFEFEF}B (top)} & 22 & \cellcolor[HTML]{C9DAF8}PGEC1 / AN3 / C2IN+ / RP1 / CN5 / RB1 &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 23 & \cellcolor[HTML]{C9DAF8}AN4/ C1IN- / RP2 / CN6 / RB2 &  & O & UART\_TX \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 24 & \cellcolor[HTML]{C9DAF8}AN5 / C1IN+ / RP3 / CN7 / RB3 &  & I & UART\_RX \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 25 & \cellcolor[HTML]{C9DAF8}AN6 / DAC1RM / RP16 / CN8 / RC0 &  & I & ENC\_A\_LEFT \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 26 & \cellcolor[HTML]{C9DAF8}AN7 / DAC1LM / RP17 / CN9 / RC1 &  & I & ENC\_B\_LEFT \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 27 & \cellcolor[HTML]{C9DAF8}AN8 / CVREF / RP18 / PMA2 / CN10 / RC2 &  & I & SENSOR\_LEFT \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 28 & VDD &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 29 & VSS &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 30 & OSC1 / CLKI / CN30 / RA2 &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 31 & OSC2 / CLKO / CN29 / RA3 &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 32 & TDO / PMA8 / RA8 & \cellcolor[HTML]{999999} & X &  \\
+\cellcolor[HTML]{B7B7B7} & \multirow{-11}{*}{\cellcolor[HTML]{EFEFEF}C (left)} & 33 & SOSCI / RP4 / CN1 / RB4 &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 34 & SOSCO / T1CK / CN0 / RA4 &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 35 & TDI / PMA9 / RA9 & \cellcolor[HTML]{999999} & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 36 & \cellcolor[HTML]{FCE5CD}RP19 / CN28 / PMBE / RC3 & \cellcolor[HTML]{999999} & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 37 & \cellcolor[HTML]{FCE5CD}RP20 / CN25 / PMA4 / RC4 & \cellcolor[HTML]{999999} & O & MOTOR\_LEFT\_IN1 \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 38 & \cellcolor[HTML]{FCE5CD}RP21 / CN26 / PMA3 / RC5 & \cellcolor[HTML]{999999} & O & MOTOR\_LEFT\_IN2 \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 39 & VSS &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 40 & VDD &  & X &  \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 41 & \cellcolor[HTML]{FCE5CD}PGED3 / ASDA1 / RP5 / CN27 / PMD7 / RB5 & \cellcolor[HTML]{999999} & O & MOTOR\_RIGHT\_IN1 \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 42 & \cellcolor[HTML]{FCE5CD}PGEC3 / ASCL1 / RP6 / CN24 / PMD6 / RB6 & \cellcolor[HTML]{999999} & O & MOTOR\_RIGHT\_IN2 \\
+\cellcolor[HTML]{B7B7B7} & \cellcolor[HTML]{EFEFEF} & 43 & INT0 / RP7 / CN23 / PMD5 / RB7 & \cellcolor[HTML]{999999} & X &  \\
+\multirow{-44}{*}{\cellcolor[HTML]{B7B7B7}dspic33fj128mc804} & \multirow{-11}{*}{\cellcolor[HTML]{EFEFEF}D (bottom)} & 44 & SCL1 / RP8 / CN22 / PMD4 / RB8 & \cellcolor[HTML]{999999} & I & SELF\_DESTRUCT
+\end{tabular}
+\caption{Table 2: Microcontroller Pin Layout. Analogue pins are marked blue, PWM pins green, RP pins Orange.}
+\end{table}
