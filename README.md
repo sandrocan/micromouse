@@ -2,7 +2,7 @@
 
 Custom autonomous Micromouse robot developed as a university team project in embedded systems and control. The project combines custom PCB design, dsPIC firmware, wheel-speed control, wall-based trajectory correction, and map-based maze navigation in a single robot.
 
-Read the final report: [Airflow_Don_Report.pdf](report/Airflow_Don_Report.pdf)
+Read the final [report.pdf](report/report.pdf)
 
 <p align="center">
   <img src="images/robot_and_maze.jpeg" width="48%" alt="Micromouse robot inside the test maze">
